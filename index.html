@@ -1619,16 +1619,35 @@
         state.dataSource = 'supabase';
         el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · 正在读取云端';
         const bundle = await loadCloudStructure();
-        if (bundle.platforms.length) {
-          const matched = bundle.platforms.find(p => p.id === state.platform) || bundle.platforms[0];
+        const mergedPlatforms = (bundle.platforms || []).map(platform => ({
+          ...platform,
+          contents: (bundle.contents || []).filter(row => row.platform_code === platform.id).map(row => [
+            row.title,
+            row.publish_date || '',
+            String(row.views ?? 0),
+            row.engagement_text || `${row.likes || 0} / ${row.comments || 0}`,
+            row.status || '导入'
+          ]),
+          imports: (bundle.imports || []).filter(row => row.platform_code === platform.id).map(row => [
+            row.imported_at || '',
+            row.source_file || '',
+            row.updated_by || '未知',
+            row.note || '',
+            row.result || '成功'
+          ]),
+          audits: (bundle.audits || []).filter(row => row.platform_code === platform.id).map(row => [
+            row.action_at || '',
+            row.action_type || '',
+            row.action_target || '',
+            row.updated_by || '未知',
+            row.note || ''
+          ])
+        }));
+        if (mergedPlatforms.length) {
+          const matched = mergedPlatforms.find(p => p.id === state.platform) || mergedPlatforms[0];
           state.platform = matched.id;
-        }
-        if (bundle.platforms.length) {
-          bundle.platforms.forEach(found => {
-            const idx = platforms.findIndex(p => p.id === found.id);
-            if (idx >= 0) platforms[idx] = found;
-            else platforms.push(found);
-          });
+          platforms.length = 0;
+          mergedPlatforms.forEach(p => platforms.push(p));
         }
         renderAll();
         el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · Supabase Connected';
