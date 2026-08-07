@@ -7,6 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --bg: #fafafa;
@@ -201,13 +202,17 @@
       <aside class="card hero-side">
         <div class="upload-box">
           <h2>上传你的数据文件</h2>
-          <p>支持 CSV。你也可以先把各平台后台导出的表整理成同样的列名，页面会直接读取。没有上传时，先看示例数据也行。</p>
+          <p>支持 CSV / Excel。你也可以先把各平台后台导出的表整理成同样的列名，页面会直接读取。没有上传时，先看示例数据也行。</p>
           <input id="fileInput" type="file" accept=".csv,.xlsx,.xls" />
           <div class="upload-row" style="margin-top:12px;">
             <button class="btn-primary" id="loadSample">加载示例数据</button>
             <button class="btn-secondary" id="clearData">清空并重置</button>
           </div>
-          <div class="status" id="statusBox">当前状态：等待你上传 CSV。字段建议包含：平台、账号、标题、发布日期、阅读数、点赞数、评论数、收藏数、链接、摘要。</div>
+          <div class="upload-row" style="margin-top:8px;">
+            <button class="btn-primary" id="saveCloud">保存到云端</button>
+            <button class="btn-secondary" id="loadCloud">从云端加载</button>
+          </div>
+          <div class="status" id="statusBox">当前状态：等待你上传 CSV / Excel。字段建议包含：平台、账号、标题、发布日期、阅读数、点赞数、评论数、收藏数、链接、摘要。</div>
         </div>
         <ul class="hint-list">
           <li><span class="hint-dot"></span><span>先支持 CSV，最适合代码小白。Excel 可后面再加。</span></li>
@@ -295,6 +300,11 @@
       { platform: '小红书', account: '网聚云联', title: '运维人半夜救火的真实感受', date: '2026-05-22', views: 1016, likes: 57, favorites: 31, comments: 6, hot: '是' }
     ];
 
+    const SUPABASE_URL = 'https://yzxiqzwnxanpxeeugzkm.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_KFgVTZ7GSykhKGv_ld1b2Q_IHEoaI70';
+    const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+    const CLOUD_TABLE = 'dashboard_rows';
+
     let currentRows = [...sampleRows];
     let trendChart = null;
 
@@ -358,7 +368,28 @@
         likes: n(r['点赞数'] ?? r['点赞'] ?? r.likes),
         favorites: n(r['收藏数'] ?? r['收藏'] ?? r.favorites),
         comments: n(r['评论数'] ?? r['评论'] ?? r.comments),
-        hot: String(r['是否爆款'] ?? r.hot ?? '').includes('是') ? '是' : '否'
+        hot: String(r['是否爆款'] ?? r.hot ?? '').includes('是') ? '是' : '否',
+        source_file: r.source_file || '',
+        updated_at: r.updated_at || new Date().toISOString(),
+        updated_by: r.updated_by || ''
+      }));
+    }
+
+    function toDbRows(rows) {
+      const now = new Date().toISOString();
+      return normalizeRows(rows).map(r => ({
+        platform: r.platform,
+        account: r.account,
+        title: r.title,
+        publish_date: r.date || null,
+        views: r.views,
+        likes: r.likes,
+        favorites: r.favorites,
+        comments: r.comments,
+        hot: r.hot,
+        source_file: r.source_file || '',
+        updated_at: now,
+        updated_by: 'manual-upload'
       }));
     }
 
@@ -466,6 +497,26 @@
       });
     }
 
+    async function loadCloudRows() {
+      if (!supabase) throw new Error('Supabase 客户端未初始化');
+      const { data, error } = await supabase
+        .from(CLOUD_TABLE)
+        .select('*')
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    }
+
+    async function saveCloudRows(rows) {
+      if (!supabase) throw new Error('Supabase 客户端未初始化');
+      const dbRows = toDbRows(rows);
+      const { error: delError } = await supabase.from(CLOUD_TABLE).delete().gte('id', 0);
+      if (delError) throw delError;
+      const { error: insertError } = await supabase.from(CLOUD_TABLE).insert(dbRows);
+      if (insertError) throw insertError;
+      return dbRows.length;
+    }
+
     function formatNum(num) {
       return Number(num || 0).toLocaleString('zh-CN');
     }
@@ -494,6 +545,49 @@
       document.getElementById('hotCount').textContent = '0';
       if (trendChart) { trendChart.destroy(); trendChart = null; }
       document.getElementById('statusBox').textContent = '当前状态：已清空。请上传 CSV 或点击“加载示例数据”。';
+    });
+
+    document.getElementById('saveCloud').addEventListener('click', async () => {
+      try {
+        if (!currentRows.length) {
+          document.getElementById('statusBox').textContent = '当前状态：没有可保存的数据，先上传文件或加载示例数据。';
+          return;
+        }
+        document.getElementById('statusBox').textContent = '当前状态：正在保存到云端，别急，我在跑...';
+        const count = await saveCloudRows(currentRows);
+        document.getElementById('statusBox').textContent = `当前状态：已保存 ${count} 条到云端。`;
+      } catch (err) {
+        document.getElementById('statusBox').textContent = `当前状态：保存失败，${err.message}`;
+      }
+    });
+
+    document.getElementById('loadCloud').addEventListener('click', async () => {
+      try {
+        document.getElementById('statusBox').textContent = '当前状态：正在从云端加载...';
+        const rows = await loadCloudRows();
+        if (!rows.length) {
+          document.getElementById('statusBox').textContent = '当前状态：云端还没有数据。';
+          return;
+        }
+        const mapped = rows.map(r => ({
+          platform: r.platform,
+          account: r.account,
+          title: r.title,
+          date: r.publish_date || '',
+          views: r.views,
+          likes: r.likes,
+          favorites: r.favorites,
+          comments: r.comments,
+          hot: r.hot,
+          source_file: r.source_file || '',
+          updated_at: r.updated_at || '',
+          updated_by: r.updated_by || ''
+        }));
+        render(mapped);
+        document.getElementById('statusBox').textContent = `当前状态：已从云端加载 ${mapped.length} 条。`;
+      } catch (err) {
+        document.getElementById('statusBox').textContent = `当前状态：读取云端失败，${err.message}`;
+      }
     });
 
     document.getElementById('fileInput').addEventListener('change', async (e) => {
