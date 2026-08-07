@@ -3,617 +3,1617 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>数据看板上传版</title>
+  <title>社交平台数据看板</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
-      --bg: #fafafa;
-      --panel: #ffffff;
-      --line: rgba(15, 23, 42, 0.08);
-      --line-soft: rgba(15, 23, 42, 0.05);
-      --text: #14202e;
-      --muted: #64748b;
-      --primary: #10b981;
-      --primary-soft: rgba(16, 185, 129, 0.10);
-      --primary-2: #3b82f6;
-      --warn: #f59e0b;
-      --danger: #f43f5e;
-      --radius: 20px;
-      --shadow: 0 12px 40px rgba(15, 23, 42, 0.06);
+      --bg: #f7f5f0;
+      --panel: #fffdfa;
+      --line: #e9e1d3;
+      --line-soft: #f0e9dd;
+      --text: #14171e;
+      --muted: #667085;
+      --muted-2: #8b93a7;
+      --primary: #2f6f5e;
+      --primary-soft: rgba(47, 111, 94, 0.10);
+      --amber: #c97b3f;
+      --rose: #b06367;
+      --violet: #6c63ff;
+      --cyan: #4c8df6;
+      --green: #2a8c6d;
+      --shadow: 0 10px 30px rgba(20, 23, 30, 0.06);
+      --shadow-soft: 0 4px 18px rgba(20, 23, 30, 0.04);
+      --radius: 22px;
     }
     * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
     body {
-      margin: 0;
       font-family: 'Outfit', sans-serif;
       color: var(--text);
       background:
-        radial-gradient(circle at top left, rgba(16,185,129,0.08), transparent 30%),
-        radial-gradient(circle at top right, rgba(59,130,246,0.07), transparent 28%),
+        radial-gradient(circle at top left, rgba(47,111,94,0.08), transparent 22%),
+        radial-gradient(circle at top right, rgba(201,123,63,0.08), transparent 20%),
+        radial-gradient(circle at 20% 85%, rgba(108,99,255,0.05), transparent 18%),
         var(--bg);
     }
-    .wrap { max-width: 1240px; margin: 0 auto; padding: 28px 20px 44px; }
-    .hero {
+    .wrap {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 22px 18px 36px;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 18px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(255,255,255,0.92);
+      box-shadow: var(--shadow-soft);
+      position: sticky;
+      top: 14px;
+      z-index: 30;
+      backdrop-filter: blur(12px);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+    .logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--primary), #4a8d7a);
+      color: #fff;
       display: grid;
-      grid-template-columns: 1.35fr 0.85fr;
-      gap: 18px;
-      align-items: stretch;
+      place-items: center;
+      font-weight: 700;
+      box-shadow: 0 10px 24px rgba(47,111,94,0.18);
+      flex: 0 0 auto;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.2;
+    }
+    .brand p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .field-inline {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #fff;
+      min-width: 210px;
+    }
+    .field-inline span {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .field-inline input {
+      border: none;
+      outline: none;
+      width: 100%;
+      font: inherit;
+      font-size: 12.5px;
+      color: var(--text);
+      background: transparent;
+    }
+    .btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #2b3445;
+      border-radius: 14px;
+      padding: 10px 14px;
+      font: inherit;
+      font-size: 12.5px;
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+    .btn.primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .btn.soft {
+      background: var(--primary-soft);
+      border-color: rgba(47,111,94,0.14);
+      color: var(--primary);
+    }
+    .btn.warn {
+      background: rgba(176,99,103,0.08);
+      border-color: rgba(176,99,103,0.16);
+      color: var(--rose);
+    }
+    .btn:active { transform: translateY(0); }
+    .hero {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: 1.45fr 0.9fr;
+      gap: 16px;
     }
     .card {
-      background: var(--panel);
+      background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,255,255,0.99));
       border: 1px solid var(--line);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
     }
-    .hero-main { padding: 24px; position: relative; overflow: hidden; }
+    .hero-main {
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+    }
     .hero-main::after {
       content: "";
-      position: absolute; inset: auto -40px -40px auto;
-      width: 180px; height: 180px; border-radius: 50%;
-      background: radial-gradient(circle, rgba(16,185,129,0.16), transparent 70%);
+      position: absolute;
+      right: -70px;
+      bottom: -70px;
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(47,111,94,0.14), transparent 70%);
       pointer-events: none;
     }
     .eyebrow {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 7px 12px; border-radius: 999px;
-      background: var(--primary-soft); color: #0f766e; font-size: 13px; font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-size: 13px;
+      font-weight: 600;
     }
-    h1 {
+    h2.hero-title {
       margin: 14px 0 10px;
-      font-size: 34px; line-height: 1.1; letter-spacing: -0.03em;
-      font-weight: 700;
+      font-family: 'DM Serif Display', serif;
+      font-size: 34px;
+      line-height: 1.08;
+      font-weight: 400;
+      letter-spacing: -0.01em;
+      max-width: 18em;
     }
     .lead {
-      margin: 0; max-width: 700px; color: var(--muted); font-size: 15px; line-height: 1.62;
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.66;
+      max-width: 860px;
     }
-    .hero-grid {
-      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 18px;
+    .hero-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+      position: relative;
+      z-index: 1;
     }
-    .metric {
-      padding: 14px 15px; background: linear-gradient(180deg, #fff, #fcfffd);
-      border: 1px solid var(--line-soft); border-radius: 16px;
-    }
-    .metric .label { color: var(--muted); font-size: 12px; margin-bottom: 7px; }
-    .metric .value { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
-    .metric .delta { font-family: 'JetBrains Mono', monospace; font-size: 12px; margin-top: 6px; color: #0f766e; }
-    .hero-side { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
-    .upload-box {
-      border: 1.5px dashed rgba(16,185,129,0.36);
-      background: linear-gradient(180deg, rgba(16,185,129,0.05), rgba(255,255,255,0.96));
-      border-radius: 18px; padding: 18px;
-    }
-    .upload-box h2 { margin: 0 0 8px; font-size: 18px; }
-    .upload-box p { margin: 0 0 14px; color: var(--muted); font-size: 14px; line-height: 1.6; }
-    .upload-row { display: flex; gap: 10px; flex-wrap: wrap; }
-    input[type="file"] {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
+    .tag {
+      padding: 8px 12px;
+      border-radius: 999px;
       background: #fff;
-      font-family: inherit;
+      border: 1px solid var(--line);
+      color: #3d4758;
+      font-size: 12.5px;
+      font-weight: 500;
+      box-shadow: var(--shadow-soft);
     }
-    button {
-      border: 0; border-radius: 12px; padding: 11px 14px;
-      font-family: inherit; font-weight: 600; cursor: pointer;
-      transition: .2s ease;
+    .hero-side {
+      padding: 18px;
+      display: grid;
+      gap: 12px;
     }
-    .btn-primary { background: var(--primary); color: #fff; }
-    .btn-secondary { background: #eef2ff; color: #3730a3; }
-    .btn-ghost { background: #f8fafc; color: #334155; border: 1px solid var(--line); }
-    button:hover { transform: translateY(-1px); }
-    .hint-list {
-      display: grid; gap: 8px; margin: 0; padding: 0; list-style: none;
+    .side-block {
+      background: rgba(252,250,246,0.96);
+      border: 1px solid var(--line-soft);
+      border-radius: 18px;
+      padding: 16px;
     }
-    .hint-list li {
-      display: flex; gap: 10px; align-items: flex-start;
-      font-size: 13px; color: #334155; line-height: 1.5;
-      padding: 10px 12px; border-radius: 12px; background: #fff; border: 1px solid var(--line-soft);
+    .side-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      margin: 0 0 10px;
     }
-    .hint-dot {
-      width: 9px; height: 9px; border-radius: 50%; margin-top: 6px; flex: 0 0 auto; background: var(--primary);
+    .side-title i {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--primary);
+      display: inline-block;
+      flex: 0 0 auto;
     }
-    .section { margin-top: 18px; }
+    .kv {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      row-gap: 10px;
+      column-gap: 14px;
+      margin: 0;
+    }
+    .kv dt {
+      color: var(--muted);
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--line-soft);
+      font-size: 13px;
+    }
+    .kv dd {
+      margin: 0;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--line-soft);
+      font-size: 13px;
+      color: #202634;
+    }
+    .main {
+      margin-top: 18px;
+      display: grid;
+      gap: 18px;
+    }
     .section-head {
-      display: flex; align-items: end; justify-content: space-between; gap: 14px;
-      margin: 22px 2px 12px;
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 14px;
+      margin: 2px 4px 8px;
     }
-    .section-head h2 { margin: 0; font-size: 22px; letter-spacing: -0.02em; }
-    .section-head p { margin: 0; color: var(--muted); font-size: 13px; }
-    .grid-2 { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; }
-    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-    .panel { padding: 18px; }
-    .panel h3 { margin: 0 0 14px; font-size: 16px; }
-    .panel-sub { color: var(--muted); font-size: 13px; margin-top: -8px; margin-bottom: 12px; }
-    .table-wrap { overflow: auto; border-radius: 14px; border: 1px solid var(--line-soft); }
-    table { width: 100%; border-collapse: collapse; min-width: 860px; }
-    th, td {
-      text-align: left; padding: 12px 12px; border-bottom: 1px solid var(--line-soft);
-      font-size: 13px; vertical-align: top;
+    .section-head h3 {
+      margin: 0;
+      font-family: 'DM Serif Display', serif;
+      font-size: 24px;
+      font-weight: 400;
     }
-    th { position: sticky; top: 0; background: #fcfdfd; color: #334155; font-weight: 600; }
-    td { color: #1f2937; }
-    .platform-tag {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 5px 10px; border-radius: 999px; background: #f8fafc; color: #0f172a; font-size: 12px; font-weight: 600;
+    .section-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      max-width: 640px;
+      text-align: right;
     }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
-    .bar-row { display: grid; grid-template-columns: 120px 1fr 74px; align-items: center; gap: 12px; padding: 7px 0; }
-    .bar-track { height: 14px; background: #eef2f7; border-radius: 999px; overflow: hidden; }
-    .bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--primary), var(--primary-2)); }
-    .bar-val { text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #475569; }
-    .mini-note { font-size: 12px; color: var(--muted); line-height: 1.6; }
-    .footer-note {
-      margin-top: 16px; padding: 16px 18px; border-radius: 16px;
-      background: #fff; border: 1px solid var(--line); color: #334155; font-size: 13px; line-height: 1.6;
+    .panel {
+      padding: 18px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.94);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-soft);
     }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .tabs {
+      display: inline-flex;
+      padding: 4px;
+      gap: 4px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      box-shadow: var(--shadow-soft);
+    }
+    .tab {
+      border: none;
+      background: transparent;
+      padding: 8px 14px;
+      border-radius: 999px;
+      color: #475569;
+      cursor: pointer;
+      font: inherit;
+      font-size: 12.5px;
+    }
+    .tab.active {
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-weight: 700;
+    }
+    .grid-platforms {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .platform-card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+      padding: 14px;
+      text-align: left;
+      cursor: pointer;
+      transition: 0.18s ease;
+      min-height: 124px;
+    }
+    .platform-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-soft); }
+    .platform-card.active { border-color: rgba(47,111,94,0.28); background: rgba(47,111,94,0.06); }
+    .platform-card strong { display: block; font-size: 14px; margin-bottom: 6px; }
+    .platform-card .meta { color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .platform-card .num {
+      display: inline-flex;
+      margin-top: 10px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: rgba(47,111,94,0.08);
+      color: var(--primary);
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .kpi {
+      padding: 14px;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid var(--line);
+    }
+    .kpi .label { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+    .kpi .value { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
+    .kpi .hint { color: var(--muted-2); font-size: 12px; margin-top: 4px; }
+    .shell {
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background: #fff;
+      overflow: hidden;
+      box-shadow: var(--shadow-soft);
+    }
+    .shell-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(252,250,246,0.98), rgba(255,255,255,0.98));
+    }
+    .dots { display: flex; gap: 6px; }
+    .dots span { width: 10px; height: 10px; border-radius: 50%; background: #e2e8f0; }
+    .shell-top strong { font-size: 13px; color: #334155; }
+    .chip-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid var(--line);
+      background: #fcfcfb;
+      color: #475569;
+    }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      overflow: hidden;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+    }
+    .table th, .table td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line-soft);
+      text-align: left;
+      vertical-align: top;
+    }
+    .table th {
+      background: #fcfaf6;
+      color: #445065;
+      font-weight: 600;
+      font-size: 11.5px;
+    }
+    .table tr:last-child td { border-bottom: none; }
     .status {
-      margin-top: 12px; padding: 12px 14px; border-radius: 14px;
-      background: #f8fafc; border: 1px solid var(--line-soft); font-size: 13px; color: #334155;
-      min-height: 46px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: rgba(47,111,94,0.08);
+      color: var(--primary);
     }
-    canvas { width: 100% !important; height: 320px !important; }
-    @media (max-width: 980px) {
-      .hero, .grid-2, .grid-3 { grid-template-columns: 1fr; }
-      .hero-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      h1 { font-size: 28px; }
+    .status.warn { background: rgba(201,123,63,0.10); color: var(--amber); }
+    .status.delete { background: rgba(176,99,103,0.10); color: var(--rose); }
+    .list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      position: relative;
     }
-    @media (max-width: 640px) {
-      .wrap { padding: 16px 12px 28px; }
-      .hero-grid { grid-template-columns: 1fr; }
-      canvas { height: 260px !important; }
-      .bar-row { grid-template-columns: 92px 1fr 56px; }
-      table { min-width: 760px; }
+    .list::before {
+      content: "";
+      position: absolute;
+      left: 8px;
+      top: 6px;
+      bottom: 6px;
+      width: 2px;
+      background: var(--primary);
+      opacity: .28;
+    }
+    .list li {
+      position: relative;
+      padding: 0 0 18px 32px;
+    }
+    .list li::before {
+      content: "";
+      position: absolute;
+      left: 2px;
+      top: 4px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: white;
+      border: 2px solid var(--primary);
+    }
+    .list strong { display: block; font-size: 14px; margin-bottom: 4px; }
+    .list p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .card-grid { display: grid; gap: 12px; }
+    .mini-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .metric-box {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+      padding: 14px;
+    }
+    .metric-box .key { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+    .metric-box .val { font-weight: 700; font-size: 18px; }
+    .metric-box .desc { color: var(--muted-2); font-size: 12px; margin-top: 4px; }
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .sidebar {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+      padding: 14px;
+    }
+    .sidebar h4, .content-area h4, .chart-card h4 { margin: 0 0 10px; font-size: 14px; }
+    .sidebar .item {
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      margin-bottom: 8px;
+      font-size: 12.5px;
+      color: #475569;
+      background: #fcfcfb;
+    }
+    .sidebar .item strong { display: block; font-size: 13px; color: #1f2937; margin-bottom: 4px; }
+    .chart-card, .content-area {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+      padding: 14px;
+    }
+    .chart-wrap {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 12px;
+    }
+    .chart-box {
+      min-height: 220px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(252,250,246,0.94), rgba(255,255,255,0.99));
+      padding: 14px;
+    }
+    .chart-caption { color: var(--muted); font-size: 12.5px; margin: 0 0 10px; }
+    .spark {
+      width: 100%;
+      height: 160px;
+      display: block;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      padding: 7px 10px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+    }
+    .swatch { width: 10px; height: 10px; border-radius: 50%; }
+    .swatch.primary { background: var(--primary); }
+    .swatch.amber { background: var(--amber); }
+    .swatch.rose { background: var(--rose); }
+    .swatch.violet { background: var(--violet); }
+    .swatch.blue { background: var(--cyan); }
+    .timeline {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      position: relative;
+    }
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 8px;
+      top: 6px;
+      bottom: 6px;
+      width: 2px;
+      background: var(--primary);
+      opacity: .28;
+    }
+    .timeline li {
+      position: relative;
+      padding: 0 0 18px 32px;
+    }
+    .timeline li::before {
+      content: "";
+      position: absolute;
+      left: 2px;
+      top: 4px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: white;
+      border: 2px solid var(--primary);
+    }
+    .timeline strong { display: block; font-size: 14px; margin-bottom: 4px; }
+    .timeline p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .empty {
+      padding: 18px;
+      border: 1px dashed #d8d0c2;
+      border-radius: 18px;
+      background: linear-gradient(180deg, #fff, #fbfaf7);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .footer {
+      margin-top: 18px;
+      padding: 16px 18px;
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(47,111,94,0.08), rgba(255,255,255,0.92));
+      border: 1px solid rgba(47,111,94,0.14);
+      color: #334155;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .modal-mask {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.38);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 60;
+    }
+    .modal-mask.show { display: flex; }
+    .modal {
+      width: min(760px, 100%);
+      border-radius: 24px;
+      background: #fffdf9;
+      border: 1px solid var(--line);
+      box-shadow: 0 28px 80px rgba(15, 23, 42, 0.20);
+      overflow: hidden;
+    }
+    .modal-head, .modal-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .modal-foot {
+      border-bottom: none;
+      border-top: 1px solid var(--line);
+      justify-content: flex-end;
+    }
+    .modal-body { padding: 18px; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .form-field {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: #fff;
+    }
+    .form-field label {
+      display: block;
+      color: var(--muted);
+      font-size: 11.5px;
+      margin-bottom: 6px;
+    }
+    .form-field input, .form-field select, .form-field textarea {
+      width: 100%;
+      border: none;
+      outline: none;
+      background: transparent;
+      font: inherit;
+      font-size: 13px;
+      color: var(--text);
+      resize: vertical;
+    }
+    .form-field textarea { min-height: 84px; }
+    .hidden { display: none !important; }
+    @media (max-width: 1180px) {
+      .hero, .grid-2, .grid-3, .grid-4, .kpi-grid, .grid-platforms, .grid-home, .two-col, .chart-wrap { grid-template-columns: 1fr; }
+      .section-head { align-items: start; flex-direction: column; }
+      .section-head p { text-align: left; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .top-actions { justify-content: flex-start; }
+    }
+    @media (max-width: 680px) {
+      .wrap { padding: 14px 12px 28px; }
+      h2.hero-title { font-size: 30px; }
+      .form-grid, .mini-grid { grid-template-columns: 1fr; }
+      .field-inline { min-width: 0; width: 100%; }
+      .top-actions { width: 100%; }
+      .btn { width: auto; }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">D</div>
+        <div>
+          <h1>社交平台数据看板</h1>
+          <p>主页导航 + 平台页 + 上传留痕 + 复盘中心</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <label class="field-inline">
+          <span>当前操作者</span>
+          <input id="operatorInput" value="张三" />
+        </label>
+        <button class="btn soft" id="goHomeBtn">主页</button>
+        <button class="btn" id="syncCloudBtn">从云端加载</button>
+        <button class="btn" id="saveCloudBtn">保存到云端</button>
+        <button class="btn" id="openUploadBtn">上传数据</button>
+        <button class="btn" id="openAddPlatformBtn">新增平台</button>
+        <button class="btn primary" id="switchViewBtn">进入平台页</button>
+      </div>
+    </header>
+
     <section class="hero">
       <div class="card hero-main">
-        <span class="eyebrow">数据看板 · 上传版</span>
-        <h1>上传 Excel / CSV，立刻看到多平台内容表现</h1>
-        <p class="lead">这是给你们公司内部先跑起来的第一版。你自己把各平台官方后台导出的数据丢进来，页面会自动汇总总浏览量、粉丝数、完播率、点赞率、收藏率、爆款内容和周月表现。先把骨架搭稳，再谈自动抓取。</p>
-        <div class="hero-grid">
-          <div class="metric">
-            <div class="label">总浏览量</div>
-            <div class="value" id="totalViews">8,023</div>
-            <div class="delta">近 30 天汇总</div>
-          </div>
-          <div class="metric">
-            <div class="label">总点赞</div>
-            <div class="value" id="totalLikes">233</div>
-            <div class="delta">来自内容级数据</div>
-          </div>
-          <div class="metric">
-            <div class="label">总收藏</div>
-            <div class="value" id="totalFavorites">87</div>
-            <div class="delta">收藏率可继续算</div>
-          </div>
-          <div class="metric">
-            <div class="label">爆款内容</div>
-            <div class="value" id="hotCount">4</div>
-            <div class="delta">按示例阈值标记</div>
-          </div>
+        <span class="eyebrow" id="dataSourceBadge">GitHub Pages 主页面 · Supabase Ready</span>
+        <h2 class="hero-title">首页和平台页已经变成主页面版本，数据源已给 Supabase 留好口子</h2>
+        <p class="lead">
+          这版可以直接作为 GitHub Pages 的 index.html 使用。现在默认用页面内置示例数据兜底；等 Supabase 新表建好后，点击“从云端加载”就会按预留的数据结构读取平台、内容、导入记录和操作日志。
+        </p>
+        <div class="hero-tags">
+          <span class="tag">点击平台切换</span>
+          <span class="tag">上传弹窗</span>
+          <span class="tag">删除记录</span>
+          <span class="tag">导入日志</span>
+          <span class="tag">周/月复盘</span>
+          <span class="tag">新增平台入口</span>
         </div>
       </div>
       <aside class="card hero-side">
-        <div class="upload-box">
-          <h2>上传你的数据文件</h2>
-          <p>支持 CSV / Excel。你也可以先把各平台后台导出的表整理成同样的列名，页面会直接读取。没有上传时，先看示例数据也行。</p>
-          <input id="fileInput" type="file" accept=".csv,.xlsx,.xls" />
-          <div class="upload-row" style="margin-top:12px;">
-            <button class="btn-primary" id="loadSample">加载示例数据</button>
-            <button class="btn-secondary" id="clearData">清空并重置</button>
-          </div>
-          <div class="upload-row" style="margin-top:8px;">
-            <button class="btn-primary" id="saveCloud">保存到云端</button>
-            <button class="btn-secondary" id="loadCloud">从云端加载</button>
-          </div>
-          <div class="status" id="statusBox">当前状态：等待你上传 CSV / Excel。字段建议包含：平台、账号、标题、发布日期、阅读数、点赞数、评论数、收藏数、链接、摘要。</div>
+        <div class="side-block">
+          <div class="side-title"><i></i> 当前原型状态</div>
+          <dl class="kv">
+            <dt>页面模式</dt><dd id="modeText">首页 Home</dd>
+            <dt>平台</dt><dd id="platformText">微信视频号</dd>
+            <dt>操作者</dt><dd id="operatorEcho">张三</dd>
+            <dt>数据源</dt><dd id="sourceText">示例数据兜底，可切 Supabase</dd>
+          </dl>
         </div>
-        <ul class="hint-list">
-          <li><span class="hint-dot"></span><span>先支持 CSV，最适合代码小白。Excel 可后面再加。</span></li>
-          <li><span class="hint-dot"></span><span>同一套字段可以接公众号、视频号、小红书、抖音、B站、LinkedIn、CSDN。</span></li>
-          <li><span class="hint-dot"></span><span>第一版先把“看数据”跑通，自动抓取放到第二阶段。</span></li>
-        </ul>
+        <div class="side-block">
+          <div class="side-title"><i></i> 下一步最顺的事</div>
+          <p class="lead" style="font-size:13px; margin:0; line-height:1.6;">
+            先把这个页面替换到 GitHub Pages，确认结构和交互没跑偏；然后再开始接 Supabase。别急着上复杂权限，先把使用路径跑通，效率会高很多。
+          </p>
+        </div>
       </aside>
     </section>
 
-    <div class="section-head">
-      <div>
-        <h2>平台概览</h2>
-        <p>按平台聚合后的内容表现和互动强度</p>
-      </div>
-    </div>
-    <section class="grid-2">
-      <div class="card panel">
-        <h3>平台浏览量对比</h3>
-        <p class="panel-sub">示例数据按平台聚合，上传后会自动刷新。</p>
-        <div id="platformBars"></div>
-      </div>
-      <div class="card panel">
-        <h3>浏览量趋势</h3>
-        <p class="panel-sub">示例折线图，后面可改成按日/周/月切换。</p>
-        <canvas id="trendChart"></canvas>
-      </div>
-    </section>
+    <div class="main">
+      <section class="section active" id="homeSection">
+        <div class="section-head">
+          <h3>首页 Home</h3>
+          <p>负责入口、总览、最近动作。首页别抢戏，核心是让人三秒找到要去的平台。</p>
+        </div>
+        <div class="panel">
+          <div class="grid-2">
+            <div>
+              <div class="chip-row">
+                <span class="chip">当前操作者：<span id="operatorChip">张三</span></span>
+                <span class="chip">最近导入：2</span>
+                <span class="chip">待处理：1</span>
+                <span class="chip">新增平台：1</span>
+              </div>
+              <div class="grid-platforms" id="platformCards"></div>
+            </div>
+            <div class="card-grid">
+              <div class="shell">
+                <div class="shell-top">
+                  <div class="dots"><span></span><span></span><span></span></div>
+                  <strong>首页右栏概览</strong>
+                  <span class="chip">Overview</span>
+                </div>
+                <div style="padding:14px;">
+                  <div class="kpi-grid" style="margin-bottom:12px;">
+                    <div class="kpi"><div class="label">总浏览</div><div class="value">128.6k</div><div class="hint">全部平台近 30 天</div></div>
+                    <div class="kpi"><div class="label">总粉丝</div><div class="value">52.4k</div><div class="hint">累计</div></div>
+                    <div class="kpi"><div class="label">爆款内容</div><div class="value">23</div><div class="hint">按阈值判定</div></div>
+                    <div class="kpi"><div class="label">活跃平台</div><div class="value">7</div><div class="hint">可继续扩展</div></div>
+                  </div>
+                  <div class="chart-box">
+                    <p class="chart-caption">近 7 天整体趋势</p>
+                    <svg class="spark" viewBox="0 0 520 160" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id="fillHome" x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="0%" stop-color="rgba(47,111,94,0.26)" />
+                          <stop offset="100%" stop-color="rgba(47,111,94,0.02)" />
+                        </linearGradient>
+                      </defs>
+                      <rect x="0" y="0" width="520" height="160" rx="16" fill="#fff" />
+                      <path d="M20 122 L90 108 L160 112 L230 90 L300 78 L370 62 L440 68 L500 50 L500 148 L20 148 Z" fill="url(#fillHome)"></path>
+                      <path d="M20 122 L90 108 L160 112 L230 90 L300 78 L370 62 L440 68 L500 50" fill="none" stroke="#2f6f5e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
+                      <circle cx="20" cy="122" r="4" fill="#2f6f5e"></circle>
+                      <circle cx="90" cy="108" r="4" fill="#2f6f5e"></circle>
+                      <circle cx="160" cy="112" r="4" fill="#2f6f5e"></circle>
+                      <circle cx="230" cy="90" r="4" fill="#2f6f5e"></circle>
+                      <circle cx="300" cy="78" r="4" fill="#2f6f5e"></circle>
+                      <circle cx="370" cy="62" r="4" fill="#2f6f5e"></circle>
+                      <circle cx="440" cy="68" r="4" fill="#2f6f5e"></circle>
+                      <circle cx="500" cy="50" r="4" fill="#2f6f5e"></circle>
+                    </svg>
+                    <div class="legend">
+                      <span class="legend-item"><span class="swatch primary"></span> 总浏览趋势</span>
+                      <span class="legend-item"><span class="swatch amber"></span> 新增导入</span>
+                      <span class="legend-item"><span class="swatch rose"></span> 删除记录</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="shell">
+                <div class="shell-top">
+                  <strong>最近导入记录</strong>
+                  <span class="chip">Latest</span>
+                </div>
+                <div style="padding:14px;">
+                  <table class="table">
+                    <thead>
+                      <tr><th>时间</th><th>平台</th><th>文件</th><th>操作者</th><th>结果</th></tr>
+                    </thead>
+                    <tbody id="homeImportTable"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-    <div class="section-head">
-      <div>
-        <h2>内容表现</h2>
-        <p>每条内容的数据明细、爆款标记和互动情况</p>
-      </div>
+      <section class="section" id="platformSection">
+        <div class="section-head">
+          <h3>平台页 Platform</h3>
+          <div class="tabs">
+            <button class="tab active" data-tab="overview">概览</button>
+            <button class="tab" data-tab="contents">内容</button>
+            <button class="tab" data-tab="logs">日志</button>
+            <button class="tab" data-tab="review">复盘</button>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="sidebar">
+            <h4>平台切换</h4>
+            <div id="platformList"></div>
+          </div>
+          <div class="content-area">
+            <h4 id="platformHeader">微信视频号 · 平台工作台</h4>
+            <div class="chip-row" id="platformChips"></div>
+            <div class="kpi-grid" id="platformKpis"></div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:16px;">
+          <div class="grid-2">
+            <div class="chart-card">
+              <h4>平台趋势图</h4>
+              <p class="chart-caption">浏览量、点赞率、收藏率、完播率的综合变化。</p>
+              <div class="chart-box">
+                <svg class="spark" id="platformChart" viewBox="0 0 520 160" preserveAspectRatio="none"></svg>
+              </div>
+            </div>
+            <div class="chart-card">
+              <h4>平台说明</h4>
+              <ul class="list" id="platformNotes"></ul>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-overview" class="tab-panel active" style="margin-top:16px;">
+          <div class="grid-2">
+            <div class="shell">
+              <div class="shell-top"><strong>平台内容明细</strong><span class="chip">Content Table</span></div>
+              <div style="padding:14px; overflow:auto;">
+                <table class="table">
+                  <thead>
+                    <tr><th>内容标题</th><th>日期</th><th>浏览</th><th>互动</th><th>状态</th></tr>
+                  </thead>
+                  <tbody id="contentTable"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="shell">
+              <div class="shell-top"><strong>本平台最近动作</strong><span class="chip">Activity</span></div>
+              <div style="padding:14px;">
+                <ul class="timeline" id="activityTimeline"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-contents" class="tab-panel hidden" style="margin-top:16px;">
+          <div class="grid-3">
+            <div class="panel">
+              <h3>专题 / 栏目</h3>
+              <p class="lead" style="font-size:13px;">把内容分组，不然后面全是散点，复盘会很难看。</p>
+              <div class="pill-list" id="topicPills"></div>
+            </div>
+            <div class="panel">
+              <h3>爆款标签</h3>
+              <p class="lead" style="font-size:13px;">爆款不是一个结果，而是一个可复用的结构。</p>
+              <div class="pill-list" id="hotPills"></div>
+            </div>
+            <div class="panel">
+              <h3>操作建议</h3>
+              <ul class="list" id="suggestionList"></ul>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-logs" class="tab-panel hidden" style="margin-top:16px;">
+          <div class="grid-2">
+            <div class="shell">
+              <div class="shell-top"><strong>导入记录</strong><span class="chip">Import Logs</span></div>
+              <div style="padding:14px; overflow:auto;">
+                <table class="table">
+                  <thead><tr><th>时间</th><th>文件</th><th>操作者</th><th>备注</th><th>结果</th></tr></thead>
+                  <tbody id="importLogTable"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="shell">
+              <div class="shell-top"><strong>删除 / 修改记录</strong><span class="chip">Audit Logs</span></div>
+              <div style="padding:14px; overflow:auto;">
+                <table class="table">
+                  <thead><tr><th>时间</th><th>动作</th><th>对象</th><th>操作者</th><th>说明</th></tr></thead>
+                  <tbody id="auditLogTable"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-review" class="tab-panel hidden" style="margin-top:16px;">
+          <div class="grid-3">
+            <div class="panel">
+              <h3>周度复盘</h3>
+              <p class="lead" style="font-size:13px;">看本周哪个内容起量，哪个专题更稳。</p>
+              <div class="empty" id="weekReview"></div>
+            </div>
+            <div class="panel">
+              <h3>月度复盘</h3>
+              <p class="lead" style="font-size:13px;">看平台之间的增长差异和内容方向。</p>
+              <div class="empty" id="monthReview"></div>
+            </div>
+            <div class="panel">
+              <h3>业务结果</h3>
+              <p class="lead" style="font-size:13px;">把内容表现和业务动作接起来。</p>
+              <div class="empty" id="conversionReview"></div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
-    <section class="grid-3">
-      <div class="card panel" style="grid-column: span 2;">
-        <h3>内容明细表</h3>
-        <p class="panel-sub">你上传的 CSV 会直接填进这里。先按这个结构整理，最省事。</p>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>平台</th>
-                <th>标题</th>
-                <th>发布日期</th>
-                <th>阅读/播放</th>
-                <th>点赞</th>
-                <th>收藏</th>
-                <th>评论</th>
-                <th>爆款</th>
-              </tr>
-            </thead>
-            <tbody id="contentTable"></tbody>
-          </table>
+
+    <div class="footer">
+      <strong>这版原型说明：</strong>
+      现在已经可以从主页点进平台页、切换平台、查看内容和日志、打开上传弹窗。下一步只差把假数据换成 Supabase 真实数据，页面就能进入可用阶段了。
+    </div>
+  </div>
+
+  <div class="modal-mask" id="uploadModal">
+    <div class="modal">
+      <div class="modal-head">
+        <strong>上传数据</strong>
+        <button class="btn" data-close="uploadModal">关闭</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-field">
+            <label>平台</label>
+            <select id="uploadPlatform"></select>
+          </div>
+          <div class="form-field">
+            <label>操作者</label>
+            <input id="uploadOperator" />
+          </div>
+          <div class="form-field">
+            <label>文件名</label>
+            <input value="example_2026_08.xlsx" />
+          </div>
+          <div class="form-field">
+            <label>口径备注</label>
+            <input value="近 30 天官方后台导出" />
+          </div>
+          <div class="form-field" style="grid-column: 1 / -1;">
+            <label>上传说明</label>
+            <textarea>导入后将写入云端，并自动生成导入记录。</textarea>
+          </div>
         </div>
       </div>
-      <div class="card panel">
-        <h3>互动强度排行</h3>
-        <p class="panel-sub">综合点赞、收藏、评论密度排序。</p>
-        <div id="engagementBars"></div>
+      <div class="modal-foot">
+        <button class="btn">取消</button>
+        <button class="btn primary">确认上传</button>
       </div>
-    </section>
+    </div>
+  </div>
 
-    <section class="section">
-      <div class="card panel">
-        <h3>你后面要交给团队的统一字段</h3>
-        <p class="panel-sub">先把口径定住，后面不容易乱。</p>
-        <div class="footer-note">
-          <strong>建议字段：</strong> 平台、账号、内容ID、标题、内容类型、发布日期、阅读/播放、点赞、收藏、评论、转发、粉丝数、完播率、点赞率、收藏率、链接、摘要、是否爆款、周/月周期。
-          <br/><br/>
-          <strong>提醒：</strong> 公众号的“阅读数”和抖音的“播放数”不要硬合并成一个总排名，先分平台看，再做横向参考。这个最容易乱，我先帮你踩住坑了。
+  <div class="modal-mask" id="addPlatformModal">
+    <div class="modal">
+      <div class="modal-head">
+        <strong>新增平台</strong>
+        <button class="btn" data-close="addPlatformModal">关闭</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-field">
+            <label>平台名称</label>
+            <input value="Threads" />
+          </div>
+          <div class="form-field">
+            <label>平台 code</label>
+            <input value="threads" />
+          </div>
+          <div class="form-field">
+            <label>默认负责人</label>
+            <input value="运营小组" />
+          </div>
+          <div class="form-field">
+            <label>默认目标</label>
+            <input value="品牌曝光 / 获客" />
+          </div>
         </div>
       </div>
-    </section>
+      <div class="modal-foot">
+        <button class="btn">取消</button>
+        <button class="btn primary">保存平台</button>
+      </div>
+    </div>
   </div>
 
   <script>
-    const sampleRows = [
-      { platform: 'CSDN', account: 'tudoSearcher', title: '手机、平板、电脑同时控制Claude Code / Codex ?：Paseo实战指南', date: '2026-06-10', views: 824, likes: 14, favorites: 4, comments: 0, hot: '是' },
-      { platform: 'CSDN', account: 'tudoSearcher', title: '工业级IP KVM实现硬件级远程抢救', date: '2026-05-18', views: 1170, likes: 32, favorites: 10, comments: 1, hot: '是' },
-      { platform: 'CSDN', account: 'tudoSearcher', title: 'LoRa和LoRaWAN有什么区别？物联网通信协议选型', date: '2026-05-19', views: 934, likes: 9, favorites: 15, comments: 0, hot: '否' },
-      { platform: 'CSDN', account: 'tudoSearcher', title: '为什么我的服务延迟忽高忽低？从TCP角度深度排查', date: '2026-05-12', views: 699, likes: 16, favorites: 6, comments: 2, hot: '否' },
-      { platform: '微信公众号', account: '网聚云联', title: '零信任网络入门：为什么传统防火墙已经不够用了', date: '2026-05-14', views: 1520, likes: 41, favorites: 18, comments: 5, hot: '是' },
-      { platform: '抖音', account: '网聚云联官方', title: '工业级IP KVM 一分钟看懂', date: '2026-05-20', views: 2860, likes: 103, favorites: 22, comments: 14, hot: '是' },
-      { platform: '小红书', account: '网聚云联', title: '运维人半夜救火的真实感受', date: '2026-05-22', views: 1016, likes: 57, favorites: 31, comments: 6, hot: '是' }
-    ];
-
     const SUPABASE_URL = 'https://yzxiqzwnxanpxeeugzkm.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_KFgVTZ7GSykhKGv_ld1b2Q_IHEoaI70';
     const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
-    const CLOUD_TABLE = 'dashboard_rows';
+    const TABLES = {
+      platforms: 'platforms',
+      contents: 'contents',
+      importJobs: 'import_jobs',
+      auditLogs: 'audit_logs'
+    };
 
-    let currentRows = [...sampleRows];
-    let trendChart = null;
+    const state = {
+      view: 'home',
+      platform: 'wechat_video',
+      tab: 'overview',
+      operator: '张三',
+      dataSource: 'sample'
+    };
 
-    function parseCSV(text) {
-      const lines = text.replace(/^\uFEFF/, '').trim().split(/\r?\n/).filter(Boolean);
-      if (lines.length < 2) return [];
-      const headers = splitCSVLine(lines[0]);
-      return lines.slice(1).map(line => {
-        const values = splitCSVLine(line);
-        const obj = {};
-        headers.forEach((h, idx) => obj[h.trim()] = (values[idx] ?? '').trim());
-        return obj;
-      });
-    }
-
-    async function parseExcel(file) {
-      if (typeof XLSX === 'undefined') {
-        throw new Error('Excel 解析库未加载成功');
+    const platforms = [
+      {
+        id: 'wechat_video',
+        name: '微信视频号',
+        short: '视频号',
+        category: '私域 / 直播 / 触达',
+        color: 'primary',
+        kpis: [
+          { label: '浏览量', value: '32.8k', hint: '近 30 天' },
+          { label: '粉丝数', value: '18.4k', hint: '累计' },
+          { label: '完播率', value: '42.6%', hint: '均值' },
+          { label: '爆款数', value: '9', hint: '达标阈值' },
+        ],
+        chips: ['内容策略：日更 + 复盘', '重点：私域承接', '目标：线索转化'],
+        notes: [
+          '适合承接直播、视频内容和私域动作。',
+          '建议更看重完播率、转化和互动质量。',
+          '内容标题和发布时间对结果影响很大。'
+        ],
+        topics: ['直播复盘', '私域承接', '用户增长'],
+        hots: ['钩子强', '标题清晰', '结尾有引导', '强 CTA'],
+        suggestions: [
+          '保留高完播内容的脚本结构。',
+          '把直播摘要做成内容专题。',
+          '增加结尾引导到企微动作。'
+        ],
+        kpisExtra: [
+          { label: '日均点赞率', value: '6.8%', hint: '近 30 天' },
+          { label: '收藏率', value: '2.3%', hint: '近 30 天' },
+          { label: '评论率', value: '1.2%', hint: '近 30 天' },
+          { label: '线索数', value: '86', hint: '业务结果' },
+        ],
+        contents: [
+          ['如何把短视频接进私域', '2026-08-01', '12,480', '824 / 316', '爆款'],
+          ['视频号日更复盘', '2026-08-03', '6,230', '312 / 128', '观察'],
+          ['直播切片怎么做', '2026-08-05', '4,980', '201 / 88', '待优化']
+        ],
+        imports: [
+          ['15:42', 'wechat_video_aug.xlsx', '张三', '近 30 天口径', '成功'],
+          ['11:06', 'wechat_video_jul.xlsx', '王五', '补录历史数据', '成功']
+        ],
+        audits: [
+          ['15:47', '删除', '重复导入批次', '张三', '口径修正'],
+          ['15:10', '修改', '标题字段', '李四', '统一命名']
+        ],
+        activities: [
+          ['上传了近 30 天数据', '张三 · 15:42'],
+          ['删除重复批次', '张三 · 15:47'],
+          ['更新平台标签', '李四 · 15:10']
+        ],
+        week: '本周视频号整体浏览增长 18%，其中“私域承接”类内容表现最好。建议继续复用强 CTA 脚本，压缩纯介绍类内容。',
+        month: '本月视频号在业务结果上更强，但完播率还有提升空间。下个月重点抓首 3 秒和结尾引导。',
+        conversion: '当前线索数 86，主要来自内容末尾引导和直播切片。若要继续放大，需要把内容与企微承接链路进一步打通。',
+        spark: [
+          60, 72, 66, 88, 94, 108, 100, 118
+        ]
+      },
+      {
+        id: 'wechat_mp',
+        name: '微信公众号',
+        short: '公众号',
+        category: '文章 / 搜索 / 长内容',
+        color: 'amber',
+        kpis: [
+          { label: '浏览量', value: '24.1k', hint: '近 30 天' },
+          { label: '粉丝数', value: '15.7k', hint: '累计' },
+          { label: '完读率', value: '28.4%', hint: '均值' },
+          { label: '爆款数', value: '6', hint: '达标阈值' },
+        ],
+        chips: ['内容策略：方法论文章', '重点：搜索与沉淀', '目标：品牌 + 留资'],
+        notes: [
+          '适合沉淀长内容、方法论和搜索流量。',
+          '文章结构要更稳定，标题和封面对点击影响大。',
+          '可作为所有内容的知识库中心。'
+        ],
+        topics: ['方法论', '案例拆解', '品牌复盘'],
+        hots: ['标题明确', '开头给结论', '中段有结构', '结尾留转化'],
+        suggestions: [
+          '增强文章摘要与目录结构。',
+          '把高阅读文章做成系列。',
+          '补一个内容专题页。'
+        ],
+        kpisExtra: [
+          { label: '日均点赞率', value: '4.1%', hint: '近 30 天' },
+          { label: '收藏率', value: '5.6%', hint: '近 30 天' },
+          { label: '评论率', value: '0.8%', hint: '近 30 天' },
+          { label: '留资数', value: '43', hint: '业务结果' },
+        ],
+        contents: [
+          ['搭建看板的 3 个坑', '2026-08-02', '9,480', '522 / 438', '爆款'],
+          ['商业复盘模板', '2026-08-04', '5,020', '204 / 311', '观察'],
+          ['平台内容归档方法', '2026-08-06', '3,640', '118 / 176', '待优化']
+        ],
+        imports: [
+          ['14:20', 'wechat_mp_aug.xlsx', '李四', '文章数据补录', '成功'],
+          ['09:55', 'wechat_mp_jul.csv', '张三', '历史整理', '成功']
+        ],
+        audits: [
+          ['14:30', '修改', '专栏名称', '李四', '统一命名'],
+          ['10:10', '删除', '测试文章', '张三', '清理无效数据']
+        ],
+        activities: [
+          ['导入文章数据', '李四 · 14:20'],
+          ['清理测试内容', '张三 · 10:10'],
+          ['更新专栏命名', '李四 · 14:30']
+        ],
+        week: '本周公众号的收藏率表现不错，说明长内容在沉淀价值上更强。下一步可以继续强化系列化写法。',
+        month: '月度看公众号更适合作为知识库和长线资产，流量不一定最大，但留存价值更稳。',
+        conversion: '留资数 43，说明内容有一定转化能力，但仍需要更明确的 CTA 和路径承接。',
+        spark: [
+          52, 54, 57, 63, 68, 71, 74, 80
+        ]
+      },
+      {
+        id: 'xhs',
+        name: '小红书',
+        short: '小红书',
+        category: '种草 / 搜索 / 爆款',
+        color: 'rose',
+        kpis: [
+          { label: '浏览量', value: '38.2k', hint: '近 30 天' },
+          { label: '粉丝数', value: '21.3k', hint: '累计' },
+          { label: '完播率', value: '38.9%', hint: '均值' },
+          { label: '爆款数', value: '11', hint: '达标阈值' },
+        ],
+        chips: ['内容策略：搜索友好', '重点：封面和标题', '目标：种草转化'],
+        notes: [
+          '适合种草和搜索流量，标题封面非常关键。',
+          '收藏率通常是一个很重要的信号。',
+          '内容要更接近用户问题，而不是公司自嗨。'
+        ],
+        topics: ['种草笔记', '问题解答', '选题测试'],
+        hots: ['标题强搜索词', '封面有痛点', '内容更生活化', '收藏导向'],
+        suggestions: [
+          '多做用户问题型选题。',
+          '把高收藏内容做系列延展。',
+          '统一封面和标题风格。'
+        ],
+        kpisExtra: [
+          { label: '日均点赞率', value: '8.3%', hint: '近 30 天' },
+          { label: '收藏率', value: '7.8%', hint: '近 30 天' },
+          { label: '评论率', value: '1.6%', hint: '近 30 天' },
+          { label: '咨询数', value: '58', hint: '业务结果' },
+        ],
+        contents: [
+          ['新手怎么选看板工具', '2026-08-01', '14,240', '1,020 / 1,104', '爆款'],
+          ['一张图讲清数据结构', '2026-08-04', '7,220', '440 / 682', '爆款'],
+          ['运营复盘怎么写', '2026-08-06', '4,010', '221 / 334', '观察']
+        ],
+        imports: [
+          ['16:05', 'xhs_aug.xlsx', '王五', '近 30 天数据', '成功'],
+          ['12:14', 'xhs_history.csv', '张三', '历史补录', '成功']
+        ],
+        audits: [
+          ['16:12', '删除', '重复封面稿', '王五', '去重'],
+          ['12:20', '修改', '标题标签', '张三', '统一口径']
+        ],
+        activities: [
+          ['导入近 30 天数据', '王五 · 16:05'],
+          ['去重测试文件', '王五 · 16:12'],
+          ['更新标题标签', '张三 · 12:20']
+        ],
+        week: '小红书本周爆款数最多，说明标题和封面策略已经开始起作用。继续围绕用户问题写，会更稳。',
+        month: '月度维度看，小红书是最适合冲曝光和收藏的阵地，后面可以重点做系列化选题。',
+        conversion: '咨询数 58，说明内容已经有转化苗头，但还可以更明确地把用户引到下一步动作。',
+        spark: [
+          64, 78, 82, 95, 110, 108, 124, 138
+        ]
+      },
+      {
+        id: 'douyin',
+        name: '抖音',
+        short: '抖音',
+        category: '短视频 / 完播 / 转化',
+        color: 'cyan',
+        kpis: [
+          { label: '浏览量', value: '42.6k', hint: '近 30 天' },
+          { label: '粉丝数', value: '27.1k', hint: '累计' },
+          { label: '完播率', value: '45.8%', hint: '均值' },
+          { label: '爆款数', value: '13', hint: '达标阈值' },
+        ],
+        chips: ['内容策略：短平快', '重点：前 3 秒', '目标：流量 + 转化'],
+        notes: [
+          '最看重开头、节奏和完播率。',
+          '适合快速测试脚本和选题。',
+          '爆款结构一旦打出来，可以快速复制。'
+        ],
+        topics: ['开头钩子', '脚本测试', '结果导向'],
+        hots: ['前 3 秒强钩子', '节奏紧凑', '强对比', '强行动引导'],
+        suggestions: [
+          '复用高完播开头模板。',
+          '加强短视频结尾 CTA。',
+          '把爆款脚本整理成模板库。'
+        ],
+        kpisExtra: [
+          { label: '日均点赞率', value: '7.4%', hint: '近 30 天' },
+          { label: '收藏率', value: '1.9%', hint: '近 30 天' },
+          { label: '评论率', value: '2.3%', hint: '近 30 天' },
+          { label: '线索数', value: '102', hint: '业务结果' },
+        ],
+        contents: [
+          ['3 分钟看懂数据看板', '2026-08-02', '18,720', '1,240 / 354', '爆款'],
+          ['从 0 到 1 搭系统', '2026-08-03', '8,330', '612 / 220', '爆款'],
+          ['如何做平台复盘', '2026-08-06', '5,100', '314 / 148', '观察']
+        ],
+        imports: [
+          ['15:42', 'douyin_aug.xlsx', '张三', '近 30 天数据', '成功'],
+          ['09:20', 'douyin_history.csv', '李四', '历史整理', '成功']
+        ],
+        audits: [
+          ['15:47', '删除', '重复批次', '张三', '口径修正'],
+          ['10:06', '修改', '标签字段', '李四', '统一格式']
+        ],
+        activities: [
+          ['导入近 30 天数据', '张三 · 15:42'],
+          ['删除重复批次', '张三 · 15:47'],
+          ['更新标签字段', '李四 · 10:06']
+        ],
+        week: '抖音的完播率最值得盯，说明短内容结构已经开始稳定。可以继续复用前 3 秒钩子。',
+        month: '抖音这个月的转化动作表现不错，但内容节奏还可以更统一。建议把爆款结构做成模板。',
+        conversion: '线索数 102，是当前最强的转化平台之一。后面要重点看内容和转化页之间的衔接。',
+        spark: [
+          70, 92, 88, 104, 118, 122, 130, 146
+        ]
       }
-      const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: 'array' });
-      const firstSheet = workbook.SheetNames[0];
-      if (!firstSheet) return [];
-      const sheet = workbook.Sheets[firstSheet];
-      return XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    ];
+
+    const homeImportRows = [
+      ['15:42', '抖音', 'douyin_aug.xlsx', '张三', '成功'],
+      ['16:05', '小红书', 'xhs_aug.xlsx', '王五', '成功'],
+      ['14:20', '公众号', 'wechat_mp_aug.xlsx', '李四', '成功'],
+      ['11:06', '视频号', 'wechat_video_aug.xlsx', '张三', '成功']
+    ];
+
+    function normalizePlatformCode(input) {
+      return String(input || '').trim().toLowerCase();
     }
 
-    function splitCSVLine(line) {
-      const result = [];
-      let current = '';
-      let inQuotes = false;
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        const next = line[i + 1];
-        if (char === '"') {
-          if (inQuotes && next === '"') { current += '"'; i++; }
-          else { inQuotes = !inQuotes; }
-        } else if (char === ',' && !inQuotes) {
-          result.push(current);
-          current = '';
-        } else {
-          current += char;
-        }
-      }
-      result.push(current);
-      return result;
+    function toDbPlatformRow(p) {
+      return {
+        code: p.id,
+        name: p.name,
+        short_name: p.short,
+        category: p.category,
+        owner: state.operator,
+        updated_at: new Date().toISOString(),
+        updated_by: state.operator
+      };
     }
 
-    function n(v) {
-      const x = Number(String(v).replace(/,/g, ''));
-      return Number.isFinite(x) ? x : 0;
-    }
-
-    function normalizeRows(rows) {
-      return rows.map(r => ({
-        platform: r['平台'] || r.platform || r['Platform'] || '未知平台',
-        account: r['账号'] || r.account || '',
-        title: r['标题'] || r.title || r['名称'] || '未命名内容',
-        date: (r['发布日期'] || r.date || '').toString().slice(0, 10),
-        views: n(r['阅读数'] ?? r['播放量'] ?? r['浏览量'] ?? r.views),
-        likes: n(r['点赞数'] ?? r['点赞'] ?? r.likes),
-        favorites: n(r['收藏数'] ?? r['收藏'] ?? r.favorites),
-        comments: n(r['评论数'] ?? r['评论'] ?? r.comments),
-        hot: String(r['是否爆款'] ?? r.hot ?? '').includes('是') ? '是' : '否',
-        source_file: r.source_file || '',
-        updated_at: r.updated_at || new Date().toISOString(),
-        updated_by: r.updated_by || ''
+    function toDbContentRows(platform) {
+      return platform.contents.map((row, index) => ({
+        platform_code: platform.id,
+        title: row[0],
+        publish_date: row[1],
+        views: Number(String(row[2]).replace(/,/g, '')) || 0,
+        engagement_text: row[3],
+        status: row[4],
+        sort_order: index + 1,
+        updated_at: new Date().toISOString(),
+        updated_by: state.operator
       }));
     }
 
-    function toDbRows(rows) {
-      const now = new Date().toISOString();
-      return normalizeRows(rows).map(r => ({
-        platform: r.platform,
-        account: r.account,
-        title: r.title,
-        publish_date: r.date || null,
-        views: r.views,
-        likes: r.likes,
-        favorites: r.favorites,
-        comments: r.comments,
-        hot: r.hot,
-        source_file: r.source_file || '',
-        updated_at: now,
-        updated_by: 'manual-upload'
+    function toDbImportRows(platform) {
+      return platform.imports.map(row => ({
+        platform_code: platform.id,
+        imported_at: row[0],
+        source_file: row[1],
+        updated_by: row[2],
+        note: row[3],
+        result: row[4],
+        created_at: new Date().toISOString()
       }));
     }
 
-    function render(rows) {
-      const data = normalizeRows(rows);
-      currentRows = data;
-      const totalViews = data.reduce((s, r) => s + r.views, 0);
-      const totalLikes = data.reduce((s, r) => s + r.likes, 0);
-      const totalFavorites = data.reduce((s, r) => s + r.favorites, 0);
-      const hotCount = data.filter(r => r.hot === '是').length;
-      document.getElementById('totalViews').textContent = formatNum(totalViews);
-      document.getElementById('totalLikes').textContent = formatNum(totalLikes);
-      document.getElementById('totalFavorites').textContent = formatNum(totalFavorites);
-      document.getElementById('hotCount').textContent = hotCount;
-
-      const platformMap = new Map();
-      data.forEach(r => {
-        const key = r.platform;
-        const item = platformMap.get(key) || { views: 0, likes: 0, favorites: 0, comments: 0, count: 0 };
-        item.views += r.views;
-        item.likes += r.likes;
-        item.favorites += r.favorites;
-        item.comments += r.comments;
-        item.count += 1;
-        platformMap.set(key, item);
-      });
-
-      const platforms = [...platformMap.entries()].sort((a, b) => b[1].views - a[1].views);
-      renderBars('platformBars', platforms.map(([name, item]) => ({ label: name, value: item.views, suffix: '阅', max: platforms[0]?.[1].views || 1 })));
-      renderBars('engagementBars', platforms.map(([name, item]) => ({ label: name, value: Math.round((item.likes + item.favorites * 2 + item.comments * 3) / Math.max(1, item.count)), suffix: '分', max: Math.max(...platforms.map(p => Math.round((p[1].likes + p[1].favorites * 2 + p[1].comments * 3) / Math.max(1, p[1].count)))) || 1 })));
-      renderTable(data);
-      renderChart(data);
-
-      document.getElementById('statusBox').textContent = `当前状态：已加载 ${data.length} 条内容，支持继续上传 CSV 覆盖示例数据。`;
+    function toDbAuditRows(platform) {
+      return platform.audits.map(row => ({
+        platform_code: platform.id,
+        action_at: row[0],
+        action_type: row[1],
+        action_target: row[2],
+        updated_by: row[3],
+        note: row[4],
+        created_at: new Date().toISOString()
+      }));
     }
 
-    function renderBars(id, items) {
-      const box = document.getElementById(id);
-      box.innerHTML = '';
-      items.forEach(item => {
-        const row = document.createElement('div');
-        row.className = 'bar-row';
-        row.innerHTML = `
-          <div>${item.label}</div>
-          <div class="bar-track"><div class="bar-fill" style="width:${Math.max(10, item.value / item.max * 100)}%"></div></div>
-          <div class="bar-val">${formatNum(item.value)}${item.suffix}</div>
-        `;
-        box.appendChild(row);
-      });
+    function getSupabaseModeText() {
+      return supabase ? 'Supabase Ready' : 'Supabase 未初始化';
     }
 
-    function renderTable(rows) {
-      const tbody = document.getElementById('contentTable');
-      tbody.innerHTML = '';
-      rows.slice().sort((a, b) => b.views - a.views).forEach(r => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><span class="platform-tag"><span class="dot"></span>${r.platform}</span></td>
-          <td><strong>${escapeHTML(r.title)}</strong><div class="mini-note">${escapeHTML(r.account || '')}</div></td>
-          <td>${escapeHTML(r.date || '-')}</td>
-          <td>${formatNum(r.views)}</td>
-          <td>${formatNum(r.likes)}</td>
-          <td>${formatNum(r.favorites)}</td>
-          <td>${formatNum(r.comments)}</td>
-          <td>${r.hot}</td>
-        `;
-        tbody.appendChild(tr);
-      });
+    function platformFromDbRow(row) {
+      return {
+        id: normalizePlatformCode(row.code || row.id),
+        name: row.name || row.platform_name || '未命名平台',
+        short: row.short_name || row.short || row.name || '平台',
+        category: row.category || '未填写分类',
+        color: row.color || 'primary',
+        kpis: row.kpis || [],
+        chips: row.chips || [],
+        notes: row.notes || [],
+        topics: row.topics || [],
+        hots: row.hots || [],
+        suggestions: row.suggestions || [],
+        kpisExtra: row.kpis_extra || [],
+        contents: row.contents || [],
+        imports: row.imports || [],
+        audits: row.audits || [],
+        activities: row.activities || [],
+        week: row.week_review || '暂无周度复盘',
+        month: row.month_review || '暂无月度复盘',
+        conversion: row.conversion_review || '暂无业务结果',
+        spark: row.spark || [60, 72, 66, 88, 94, 108, 100, 118]
+      };
     }
 
-    function renderChart(rows) {
-      const sorted = rows.slice().sort((a, b) => a.date.localeCompare(b.date));
-      const labels = sorted.map((r, idx) => `${r.date || '未填'}-${idx + 1}`);
-      const views = sorted.map(r => r.views);
-      if (trendChart) trendChart.destroy();
-      const ctx = document.getElementById('trendChart').getContext('2d');
-      trendChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [{
-            label: '阅读/播放',
-            data: views,
-            borderColor: '#10b981',
-            backgroundColor: 'rgba(16,185,129,0.10)',
-            fill: true,
-            tension: 0.35,
-            pointRadius: 3,
-            pointBackgroundColor: '#10b981',
-            borderWidth: 2
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: { backgroundColor: '#0f172a', titleColor: '#fff', bodyColor: '#fff' }
-          },
-          scales: {
-            x: { grid: { color: 'rgba(15,23,42,0.04)' }, ticks: { color: '#64748b', maxRotation: 0, autoSkip: true } },
-            y: { grid: { color: 'rgba(15,23,42,0.05)' }, ticks: { color: '#64748b' } }
-          }
-        }
-      });
+    const el = (id) => document.getElementById(id);
+    const sections = { home: el('homeSection'), platform: el('platformSection') };
+
+    function setView(view) {
+      state.view = view;
+      sections.home.classList.toggle('active', view === 'home');
+      sections.platform.classList.toggle('active', view === 'platform');
+      el('modeText').textContent = view === 'home' ? '首页 Home' : '平台页 Platform';
+      el('switchViewBtn').textContent = view === 'home' ? '进入平台页' : '返回首页';
     }
 
-    async function loadCloudRows() {
+    function setPlatform(id) {
+      state.platform = id;
+      renderPlatform();
+      if (state.view === 'home') setView('platform');
+    }
+
+    function getPlatform() {
+      return platforms.find(p => p.id === state.platform) || platforms[0];
+    }
+
+    function renderHome() {
+      const cards = el('platformCards');
+      cards.innerHTML = platforms.map(p => `
+        <button class="platform-card ${p.id === state.platform ? 'active' : ''}" data-platform="${p.id}">
+          <strong>${p.name}</strong>
+          <div class="meta">${p.category}</div>
+          <div class="meta" style="margin-top:8px;">支持独立看板、独立日志、独立复盘。</div>
+          <span class="num">点进去看 ${p.short}</span>
+        </button>
+      `).join('');
+      cards.querySelectorAll('[data-platform]').forEach(btn => {
+        btn.addEventListener('click', () => setPlatform(btn.dataset.platform));
+      });
+      el('homeImportTable').innerHTML = homeImportRows.map(r => `
+        <tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td><span class="status">${r[4]}</span></td></tr>
+      `).join('');
+    }
+
+    function drawChart(platform) {
+      const max = Math.max(...platform.spark);
+      const points = platform.spark.map((n, i) => {
+        const x = 20 + i * (480 / (platform.spark.length - 1));
+        const y = 140 - (n / max) * 110;
+        return [x, y];
+      });
+      const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0]} ${p[1]}`).join(' ');
+      const area = `${d} L 500 148 L 20 148 Z`;
+      return `
+        <defs>
+          <linearGradient id="fillPlatform" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="rgba(47,111,94,0.25)" />
+            <stop offset="100%" stop-color="rgba(47,111,94,0.03)" />
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="520" height="160" rx="16" fill="#fff"></rect>
+        <path d="${area}" fill="url(#fillPlatform)"></path>
+        <path d="${d}" fill="none" stroke="#2f6f5e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
+        ${points.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4" fill="#2f6f5e"></circle>`).join('')}
+      `;
+    }
+
+    function renderPlatform() {
+      const p = getPlatform();
+      el('platformText').textContent = p.name;
+      el('platformHeader').textContent = `${p.name} · 平台工作台`;
+      el('platformChips').innerHTML = p.chips.map(t => `<span class="chip">${t}</span>`).join('');
+      el('platformKpis').innerHTML = [
+        ...p.kpis,
+        ...p.kpisExtra
+      ].map(k => `
+        <div class="kpi"><div class="label">${k.label}</div><div class="value">${k.value}</div><div class="hint">${k.hint}</div></div>
+      `).join('');
+      el('platformChart').innerHTML = drawChart(p);
+      el('platformNotes').innerHTML = p.notes.map(n => `<li><strong>${n}</strong><p>这个提示会在后续做成平台说明区。</p></li>`).join('');
+      el('contentTable').innerHTML = p.contents.map(row => `
+        <tr><td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td><span class="status ${row[4] === '待优化' ? 'warn' : row[4] === '观察' ? 'warn' : ''}">${row[4]}</span></td></tr>
+      `).join('');
+      el('importLogTable').innerHTML = p.imports.map(row => `
+        <tr><td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td><span class="status">${row[4]}</span></td></tr>
+      `).join('');
+      el('auditLogTable').innerHTML = p.audits.map(row => `
+        <tr><td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td></tr>
+      `).join('');
+      el('topicPills').innerHTML = p.topics.map(t => `<span class="pill green">${t}</span>`).join('');
+      el('hotPills').innerHTML = p.hots.map(t => `<span class="pill amber">${t}</span>`).join('');
+      el('suggestionList').innerHTML = p.suggestions.map(s => `<li><strong>${s}</strong><p>后面可变成“建议动作”按钮。</p></li>`).join('');
+      el('activityTimeline').innerHTML = p.activities.map(a => `<li><strong>${a[0]}</strong><p>${a[1]}</p></li>`).join('');
+      el('weekReview').textContent = p.week;
+      el('monthReview').textContent = p.month;
+      el('conversionReview').textContent = p.conversion;
+      document.querySelectorAll('.platform-card').forEach(card => {
+        card.classList.toggle('active', card.dataset.platform === p.id);
+      });
+      document.querySelectorAll('.menu-item').forEach(item => {
+        item.classList.toggle('active', item.textContent.includes(p.short));
+      });
+      document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
+      el('tab-' + state.tab).classList.remove('hidden');
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.tab === state.tab);
+      });
+      el('switchViewBtn').textContent = '返回首页';
+    }
+
+    function renderPlatformList() {
+      el('platformList').innerHTML = platforms.map(p => `
+        <div class="item ${p.id === state.platform ? 'active' : ''}" data-platform-sel="${p.id}">
+          <strong>${p.name}</strong>
+          ${p.category}
+        </div>
+      `).join('');
+      el('uploadPlatform').innerHTML = platforms.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+      el('uploadPlatform').value = state.platform;
+      el('uploadOperator').value = state.operator;
+      el('operatorEcho').textContent = state.operator;
+      el('operatorChip').textContent = state.operator;
+      el('sourceText').textContent = state.dataSource === 'supabase' ? 'Supabase 云端数据' : '示例数据兜底，可切 Supabase';
+      el('dataSourceBadge').textContent = state.dataSource === 'supabase' ? 'GitHub Pages 主页面 · Supabase Connected' : 'GitHub Pages 主页面 · Supabase Ready';
+    }
+
+    function renderAll() {
+      renderHome();
+      renderPlatformList();
+      renderPlatform();
+      if (state.dataSource !== 'supabase') {
+        el('sourceText').textContent = '示例数据兜底，可切 Supabase';
+      }
+    }
+
+    async function loadSupabaseSeed() {
       if (!supabase) throw new Error('Supabase 客户端未初始化');
-      const { data, error } = await supabase
-        .from(CLOUD_TABLE)
+      const { data: platformRows, error: platformErr } = await supabase
+        .from(TABLES.platforms)
         .select('*')
         .order('updated_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
+      if (platformErr) throw platformErr;
+      return platformRows || [];
     }
 
-    async function saveCloudRows(rows) {
+    async function loadCloudStructure() {
       if (!supabase) throw new Error('Supabase 客户端未初始化');
-      const dbRows = toDbRows(rows);
-      const { error: delError } = await supabase.from(CLOUD_TABLE).delete().gte('id', 0);
-      if (delError) throw delError;
-      const { error: insertError } = await supabase.from(CLOUD_TABLE).insert(dbRows);
-      if (insertError) throw insertError;
-      return dbRows.length;
+      const [platformRows, contentRows, importRows, auditRows] = await Promise.all([
+        supabase.from(TABLES.platforms).select('*').order('updated_at', { ascending: false }),
+        supabase.from(TABLES.contents).select('*').order('updated_at', { ascending: false }),
+        supabase.from(TABLES.importJobs).select('*').order('created_at', { ascending: false }),
+        supabase.from(TABLES.auditLogs).select('*').order('created_at', { ascending: false })
+      ]);
+      if (platformRows.error) throw platformRows.error;
+      if (contentRows.error) throw contentRows.error;
+      if (importRows.error) throw importRows.error;
+      if (auditRows.error) throw auditRows.error;
+      return {
+        platforms: (platformRows.data || []).map(platformFromDbRow),
+        contents: contentRows.data || [],
+        imports: importRows.data || [],
+        audits: auditRows.data || []
+      };
     }
 
-    function formatNum(num) {
-      return Number(num || 0).toLocaleString('zh-CN');
-    }
-
-    function escapeHTML(str) {
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    }
-
-    document.getElementById('loadSample').addEventListener('click', () => {
-      render(sampleRows);
-    });
-
-    document.getElementById('clearData').addEventListener('click', () => {
-      currentRows = [];
-      document.getElementById('contentTable').innerHTML = '';
-      document.getElementById('platformBars').innerHTML = '';
-      document.getElementById('engagementBars').innerHTML = '';
-      document.getElementById('totalViews').textContent = '0';
-      document.getElementById('totalLikes').textContent = '0';
-      document.getElementById('totalFavorites').textContent = '0';
-      document.getElementById('hotCount').textContent = '0';
-      if (trendChart) { trendChart.destroy(); trendChart = null; }
-      document.getElementById('statusBox').textContent = '当前状态：已清空。请上传 CSV 或点击“加载示例数据”。';
-    });
-
-    document.getElementById('saveCloud').addEventListener('click', async () => {
-      try {
-        if (!currentRows.length) {
-          document.getElementById('statusBox').textContent = '当前状态：没有可保存的数据，先上传文件或加载示例数据。';
-          return;
-        }
-        document.getElementById('statusBox').textContent = '当前状态：正在保存到云端，别急，我在跑...';
-        const count = await saveCloudRows(currentRows);
-        document.getElementById('statusBox').textContent = `当前状态：已保存 ${count} 条到云端。`;
-      } catch (err) {
-        document.getElementById('statusBox').textContent = `当前状态：保存失败，${err.message}`;
-      }
-    });
-
-    document.getElementById('loadCloud').addEventListener('click', async () => {
-      try {
-        document.getElementById('statusBox').textContent = '当前状态：正在从云端加载...';
-        const rows = await loadCloudRows();
-        if (!rows.length) {
-          document.getElementById('statusBox').textContent = '当前状态：云端还没有数据。';
-          return;
-        }
-        const mapped = rows.map(r => ({
-          platform: r.platform,
-          account: r.account,
-          title: r.title,
-          date: r.publish_date || '',
-          views: r.views,
-          likes: r.likes,
-          favorites: r.favorites,
-          comments: r.comments,
-          hot: r.hot,
-          source_file: r.source_file || '',
-          updated_at: r.updated_at || '',
-          updated_by: r.updated_by || ''
-        }));
-        render(mapped);
-        document.getElementById('statusBox').textContent = `当前状态：已从云端加载 ${mapped.length} 条。`;
-      } catch (err) {
-        document.getElementById('statusBox').textContent = `当前状态：读取云端失败，${err.message}`;
-      }
-    });
-
-    document.getElementById('fileInput').addEventListener('change', async (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const ext = file.name.split('.').pop()?.toLowerCase();
-      let rows = [];
-      try {
-        if (ext === 'xlsx' || ext === 'xls') {
-          rows = await parseExcel(file);
-        } else {
-          const text = await file.text();
-          rows = parseCSV(text);
-        }
-      } catch (err) {
-        document.getElementById('statusBox').textContent = `当前状态：文件解析失败，${err.message}`;
+    async function syncFromCloud() {
+      if (!supabase) {
+        el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · Supabase 未初始化';
+        el('sourceText').textContent = '当前浏览器未加载 Supabase 客户端';
         return;
       }
-      if (!rows.length) {
-        document.getElementById('statusBox').textContent = '当前状态：文件读到了，但没识别出数据行。请确认第一行是表头。';
-        return;
+      try {
+        state.dataSource = 'supabase';
+        el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · 正在读取云端';
+        const bundle = await loadCloudStructure();
+        if (bundle.platforms.length) {
+          const matched = bundle.platforms.find(p => p.id === state.platform) || bundle.platforms[0];
+          state.platform = matched.id;
+        }
+        if (bundle.platforms.length) {
+          const cloudPlatforms = bundle.platforms;
+          const found = cloudPlatforms.find(p => p.id === state.platform);
+          if (found) {
+            const idx = platforms.findIndex(p => p.id === found.id);
+            if (idx >= 0) platforms[idx] = found;
+            else platforms.unshift(found);
+          }
+        }
+        renderAll();
+        el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · Supabase Connected';
+        el('sourceText').textContent = 'Supabase 云端数据';
+      } catch (err) {
+        state.dataSource = 'sample';
+        renderAll();
+        el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · Supabase Ready';
+        el('sourceText').textContent = `云端读取失败，已回退示例数据：${err.message}`;
       }
-      render(rows);
+    }
+
+    function exportCurrentStructure() {
+      const p = getPlatform();
+      return {
+        platforms: platforms.map(toDbPlatformRow),
+        contents: toDbContentRows(p),
+        import_jobs: toDbImportRows(p),
+        audit_logs: toDbAuditRows(p)
+      };
+    }
+
+    async function saveCurrentToCloud() {
+      if (!supabase) throw new Error('Supabase 客户端未初始化');
+      const payload = exportCurrentStructure();
+      const tables = [
+        [TABLES.platforms, payload.platforms],
+        [TABLES.contents, payload.contents],
+        [TABLES.importJobs, payload.import_jobs],
+        [TABLES.auditLogs, payload.audit_logs]
+      ];
+      for (const [table, rows] of tables) {
+        if (!rows.length) continue;
+        const { error: delErr } = await supabase.from(table).delete().gte('id', 0);
+        if (delErr) throw delErr;
+        const { error: insertErr } = await supabase.from(table).insert(rows);
+        if (insertErr) throw insertErr;
+      }
+      state.dataSource = 'supabase';
+      renderAll();
+      el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · Supabase Connected';
+      el('sourceText').textContent = '已保存到 Supabase 云端';
+    }
+
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-platform-sel]');
+      if (btn) {
+        setPlatform(btn.dataset.platformSel);
+      }
+      const tab = e.target.closest('.tab');
+      if (tab) {
+        state.tab = tab.dataset.tab;
+        renderPlatform();
+      }
+      if (e.target.id === 'switchViewBtn') {
+        setView(state.view === 'home' ? 'platform' : 'home');
+        if (state.view === 'platform') renderPlatform();
+      }
+      if (e.target.id === 'goHomeBtn') setView('home');
+      if (e.target.id === 'syncCloudBtn') syncFromCloud();
+      if (e.target.id === 'saveCloudBtn') saveCurrentToCloud();
+      if (e.target.id === 'openUploadBtn') el('uploadModal').classList.add('show');
+      if (e.target.id === 'openAddPlatformBtn') el('addPlatformModal').classList.add('show');
+      if (e.target.dataset.close) el(e.target.dataset.close).classList.remove('show');
+      if (e.target.classList.contains('modal-mask')) e.target.classList.remove('show');
     });
 
-    render(sampleRows);
+    el('operatorInput').addEventListener('input', (e) => {
+      state.operator = e.target.value.trim() || '未命名';
+      renderPlatformList();
+    });
+
+    renderAll();
+    setView('home');
+    el('dataSourceBadge').textContent = getSupabaseModeText();
+    el('sourceText').textContent = supabase ? '示例数据兜底，可切 Supabase' : '示例数据兜底，可切 Supabase';
   </script>
 </body>
 </html>
