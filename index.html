@@ -1414,8 +1414,15 @@
 
     function setPlatform(id) {
       state.platform = id;
-      renderPlatform();
-      if (state.view === 'home') setView('platform');
+      setView('platform');
+      try {
+        renderPlatform();
+      } catch (err) {
+        console.error('renderPlatform failed:', err);
+        const p = getPlatform();
+        el('platformText').textContent = p.name || '未命名平台';
+        el('platformHeader').textContent = `${p.name || '未命名平台'} · 平台工作台`;
+      }
     }
 
     function getPlatform() {
@@ -1484,42 +1491,51 @@
     }
 
     function renderPlatform() {
-      const p = getPlatform();
-      el('platformText').textContent = p.name;
-      el('platformHeader').textContent = `${p.name} · 平台工作台`;
-      el('platformChips').innerHTML = p.chips.map(t => `<span class="chip">${t}</span>`).join('');
-      el('platformKpis').innerHTML = [
-        ...p.kpis,
-        ...p.kpisExtra
-      ].map(k => `
-        <div class="kpi"><div class="label">${k.label}</div><div class="value">${k.value}</div><div class="hint">${k.hint}</div></div>
-      `).join('');
-      el('platformChart').innerHTML = drawChart(p);
-      el('platformNotes').innerHTML = p.notes.map(n => `<li><strong>${n}</strong><p>这个提示会在后续做成平台说明区。</p></li>`).join('');
-      el('contentTable').innerHTML = p.contents.map(row => `
-        <tr><td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td><span class="status ${row[4] === '待优化' ? 'warn' : row[4] === '观察' ? 'warn' : ''}">${row[4]}</span></td></tr>
-      `).join('');
-      el('importLogTable').innerHTML = p.imports.map(row => `
-        <tr><td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td><span class="status">${row[4]}</span></td></tr>
-      `).join('');
-      el('auditLogTable').innerHTML = p.audits.map(row => `
-        <tr><td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td></tr>
-      `).join('');
-      el('topicPills').innerHTML = p.topics.map(t => `<span class="pill green">${t}</span>`).join('');
-      el('hotPills').innerHTML = p.hots.map(t => `<span class="pill amber">${t}</span>`).join('');
-      el('suggestionList').innerHTML = p.suggestions.map(s => `<li><strong>${s}</strong><p>后面可变成“建议动作”按钮。</p></li>`).join('');
-      el('activityTimeline').innerHTML = p.activities.map(a => `<li><strong>${a[0]}</strong><p>${a[1]}</p></li>`).join('');
-      el('weekReview').textContent = p.week;
-      el('monthReview').textContent = p.month;
-      el('conversionReview').textContent = p.conversion;
+      const p = getPlatform() || {};
+      const chips = Array.isArray(p.chips) ? p.chips : [];
+      const kpis = [...(Array.isArray(p.kpis) ? p.kpis : []), ...(Array.isArray(p.kpisExtra) ? p.kpisExtra : [])];
+      const notes = Array.isArray(p.notes) ? p.notes : [];
+      const contents = Array.isArray(p.contents) ? p.contents : [];
+      const imports = Array.isArray(p.imports) ? p.imports : [];
+      const audits = Array.isArray(p.audits) ? p.audits : [];
+      const topics = Array.isArray(p.topics) ? p.topics : [];
+      const hots = Array.isArray(p.hots) ? p.hots : [];
+      const suggestions = Array.isArray(p.suggestions) ? p.suggestions : [];
+      const activities = Array.isArray(p.activities) ? p.activities : [];
+      const spark = Array.isArray(p.spark) && p.spark.length ? p.spark : [60, 72, 66, 88, 94, 108, 100, 118];
+      el('platformText').textContent = p.name || '未命名平台';
+      el('platformHeader').textContent = `${p.name || '未命名平台'} · 平台工作台`;
+      el('platformChips').innerHTML = chips.map(t => `<span class="chip">${t}</span>`).join('') || '<span class="chip">暂无标签</span>';
+      el('platformKpis').innerHTML = kpis.map(k => `
+        <div class="kpi"><div class="label">${k.label || '指标'}</div><div class="value">${k.value || '-'}</div><div class="hint">${k.hint || ''}</div></div>
+      `).join('') || '<div class="empty">暂无 KPI 数据</div>';
+      el('platformChart').innerHTML = drawChart({ spark });
+      el('platformNotes').innerHTML = notes.length ? notes.map(n => `<li><strong>${n}</strong><p>这个提示会在后续做成平台说明区。</p></li>`).join('') : '<li><strong>暂无平台说明</strong><p>先把数据挂进来再细化。</p></li>';
+      el('contentTable').innerHTML = contents.length ? contents.map(row => `
+        <tr><td>${row[0] || ''}</td><td>${row[1] || ''}</td><td>${row[2] || ''}</td><td>${row[3] || ''}</td><td><span class="status ${row[4] === '待优化' ? 'warn' : row[4] === '观察' ? 'warn' : ''}">${row[4] || ''}</span></td></tr>
+      `).join('') : '<tr><td colspan="5"><div class="empty">暂无内容数据</div></td></tr>';
+      el('importLogTable').innerHTML = imports.length ? imports.map(row => `
+        <tr><td>${row[0] || ''}</td><td>${row[1] || ''}</td><td>${row[2] || ''}</td><td>${row[3] || ''}</td><td><span class="status">${row[4] || ''}</span></td></tr>
+      `).join('') : '<tr><td colspan="5"><div class="empty">暂无导入记录</div></td></tr>';
+      el('auditLogTable').innerHTML = audits.length ? audits.map(row => `
+        <tr><td>${row[0] || ''}</td><td>${row[1] || ''}</td><td>${row[2] || ''}</td><td>${row[3] || ''}</td><td>${row[4] || ''}</td></tr>
+      `).join('') : '<tr><td colspan="5"><div class="empty">暂无审计记录</div></td></tr>';
+      el('topicPills').innerHTML = topics.length ? topics.map(t => `<span class="pill green">${t}</span>`).join('') : '<span class="chip">暂无专题</span>';
+      el('hotPills').innerHTML = hots.length ? hots.map(t => `<span class="pill amber">${t}</span>`).join('') : '<span class="chip">暂无爆款标签</span>';
+      el('suggestionList').innerHTML = suggestions.length ? suggestions.map(s => `<li><strong>${s}</strong><p>后面可变成“建议动作”按钮。</p></li>`).join('') : '<li><strong>暂无建议</strong><p>等数据进来再生成。</p></li>';
+      el('activityTimeline').innerHTML = activities.length ? activities.map(a => `<li><strong>${a[0] || ''}</strong><p>${a[1] || ''}</p></li>`).join('') : '<li><strong>暂无动态</strong><p>先等数据同步。</p></li>';
+      el('weekReview').textContent = p.week || '暂无周度复盘';
+      el('monthReview').textContent = p.month || '暂无月度复盘';
+      el('conversionReview').textContent = p.conversion || '暂无业务结果';
       document.querySelectorAll('.platform-card').forEach(card => {
         card.classList.toggle('active', card.dataset.platform === p.id);
       });
       document.querySelectorAll('.menu-item').forEach(item => {
-        item.classList.toggle('active', item.textContent.includes(p.short));
+        item.classList.toggle('active', item.textContent.includes(p.short || ''));
       });
       document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
-      el('tab-' + state.tab).classList.remove('hidden');
+      const activePanel = el('tab-' + state.tab);
+      if (activePanel) activePanel.classList.remove('hidden');
       document.querySelectorAll('.tab').forEach(tab => {
         tab.classList.toggle('active', tab.dataset.tab === state.tab);
       });
