@@ -1572,13 +1572,11 @@
           state.platform = matched.id;
         }
         if (bundle.platforms.length) {
-          const cloudPlatforms = bundle.platforms;
-          const found = cloudPlatforms.find(p => p.id === state.platform);
-          if (found) {
+          bundle.platforms.forEach(found => {
             const idx = platforms.findIndex(p => p.id === found.id);
             if (idx >= 0) platforms[idx] = found;
-            else platforms.unshift(found);
-          }
+            else platforms.push(found);
+          });
         }
         renderAll();
         el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · Supabase Connected';
@@ -1672,6 +1670,10 @@
     setView('home');
     el('dataSourceBadge').textContent = getSupabaseModeText();
     el('sourceText').textContent = supabase ? '示例数据兜底，可切 Supabase' : '示例数据兜底，可切 Supabase';
+
+    if (supabase) {
+      syncFromCloud();
+    }
   </script>
 </body>
 </html>
