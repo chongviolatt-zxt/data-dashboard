@@ -1022,9 +1022,61 @@
   </div>
 
   <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const fallbackPlatforms = [
+        { id: 'wechat_video', name: '微信视频号', short: '视频号', category: '私域 / 直播 / 触达' },
+        { id: 'wechat_mp', name: '微信公众号', short: '公众号', category: '文章 / 搜索 / 长内容' },
+        { id: 'xhs', name: '小红书', short: '小红书', category: '种草 / 搜索 / 爆款' },
+        { id: 'douyin', name: '抖音', short: '抖音', category: '短视频 / 完播 / 转化' }
+      ];
+      const cards = document.getElementById('platformCards');
+      if (cards && !cards.children.length) {
+        cards.innerHTML = fallbackPlatforms.map(p => `
+          <button type="button" class="platform-card" data-platform="${p.id}" onclick="window.setPlatform ? setPlatform('${p.id}') : null">
+            <strong>${p.name}</strong>
+            <div class="meta">${p.category}</div>
+            <div class="meta" style="margin-top:8px;">支持独立看板、独立日志、独立复盘。</div>
+            <span class="num">点进去看 ${p.short}</span>
+          </button>
+        `).join('');
+      }
+      const list = document.getElementById('platformList');
+      if (list && !list.children.length) {
+        list.innerHTML = fallbackPlatforms.map(p => `
+          <button type="button" class="menu-item" data-platform-sel="${p.id}" onclick="window.setPlatform ? setPlatform('${p.id}') : null">
+            <span><strong>${p.name}</strong><br>${p.category}</span>
+          </button>
+        `).join('');
+      }
+    });
+
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const cards = document.getElementById('platformCards');
+        if (cards && !cards.children.length) {
+          const fallbackPlatforms = [
+            { id: 'wechat_video', name: '微信视频号', short: '视频号', category: '私域 / 直播 / 触达' },
+            { id: 'wechat_mp', name: '微信公众号', short: '公众号', category: '文章 / 搜索 / 长内容' },
+            { id: 'xhs', name: '小红书', short: '小红书', category: '种草 / 搜索 / 爆款' },
+            { id: 'douyin', name: '抖音', short: '抖音', category: '短视频 / 完播 / 转化' }
+          ];
+          cards.innerHTML = fallbackPlatforms.map(p => `
+            <button type="button" class="platform-card" data-platform="${p.id}" onclick="window.setPlatform ? setPlatform('${p.id}') : null">
+              <strong>${p.name}</strong>
+              <div class="meta">${p.category}</div>
+              <div class="meta" style="margin-top:8px;">支持独立看板、独立日志、独立复盘。</div>
+              <span class="num">点进去看 ${p.short}</span>
+            </button>
+          `).join('');
+        }
+      }, 600);
+    });
+  </script>
+
+  <script>
     const SUPABASE_URL = 'https://yzxiqzwnxanpxeeugzkm.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_KFgVTZ7GSykhKGv_ld1b2Q_IHEoaI70';
-    const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+    const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
     const TABLES = {
       platforms: 'platforms',
       contents: 'contents',
@@ -1321,7 +1373,7 @@
     }
 
     function getSupabaseModeText() {
-      return supabase ? 'Supabase Ready' : 'Supabase 未初始化';
+      return supabaseClient ? 'Supabase Ready' : 'Supabase 未初始化';
     }
 
     function platformFromDbRow(row) {
@@ -1499,7 +1551,7 @@
     }
 
     async function seedSamplePlatforms() {
-      if (!supabase) {
+      if (!supabaseClient) {
         state.dataSource = 'sample';
         state.platform = 'wechat_video';
         renderAll();
@@ -1528,8 +1580,8 @@
     }
 
     async function loadSupabaseSeed() {
-      if (!supabase) throw new Error('Supabase 客户端未初始化');
-      const { data: platformRows, error: platformErr } = await supabase
+      if (!supabaseClient) throw new Error('Supabase 客户端未初始化');
+      const { data: platformRows, error: platformErr } = await supabaseClient
         .from(TABLES.platforms)
         .select('*')
         .order('updated_at', { ascending: false });
@@ -1538,12 +1590,12 @@
     }
 
     async function loadCloudStructure() {
-      if (!supabase) throw new Error('Supabase 客户端未初始化');
+      if (!supabaseClient) throw new Error('Supabase 客户端未初始化');
       const [platformRows, contentRows, importRows, auditRows] = await Promise.all([
-        supabase.from(TABLES.platforms).select('*').order('updated_at', { ascending: false }),
-        supabase.from(TABLES.contents).select('*').order('updated_at', { ascending: false }),
-        supabase.from(TABLES.importJobs).select('*').order('created_at', { ascending: false }),
-        supabase.from(TABLES.auditLogs).select('*').order('created_at', { ascending: false })
+        supabaseClient.from(TABLES.platforms).select('*').order('updated_at', { ascending: false }),
+        supabaseClient.from(TABLES.contents).select('*').order('updated_at', { ascending: false }),
+        supabaseClient.from(TABLES.importJobs).select('*').order('created_at', { ascending: false }),
+        supabaseClient.from(TABLES.auditLogs).select('*').order('created_at', { ascending: false })
       ]);
       if (platformRows.error) throw platformRows.error;
       if (contentRows.error) throw contentRows.error;
@@ -1558,7 +1610,7 @@
     }
 
     async function syncFromCloud() {
-      if (!supabase) {
+      if (!supabaseClient) {
         el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · Supabase 未初始化';
         el('sourceText').textContent = '当前浏览器未加载 Supabase 客户端';
         return;
@@ -1607,7 +1659,7 @@
     }
 
     async function saveCurrentToCloud() {
-      if (!supabase) throw new Error('Supabase 客户端未初始化');
+      if (!supabaseClient) throw new Error('Supabase 客户端未初始化');
       const payload = exportCurrentStructure();
       const tables = [
         [TABLES.platforms, payload.platforms],
@@ -1616,10 +1668,10 @@
         [TABLES.auditLogs, payload.audit_logs]
       ];
       for (const [table, rows] of tables) {
-        const { error: delErr } = await supabase.from(table).delete().gte('id', 0);
+        const { error: delErr } = await supabaseClient.from(table).delete().gte('id', 0);
         if (delErr) throw delErr;
         if (rows.length) {
-          const { error: insertErr } = await supabase.from(table).insert(rows);
+          const { error: insertErr } = await supabaseClient.from(table).insert(rows);
           if (insertErr) throw insertErr;
         }
       }
@@ -1666,13 +1718,26 @@
     window.syncFromCloud = syncFromCloud;
     window.saveCurrentToCloud = saveCurrentToCloud;
 
-    renderAll();
-    setView('home');
-    el('dataSourceBadge').textContent = getSupabaseModeText();
-    el('sourceText').textContent = supabase ? '示例数据兜底，可切 Supabase' : '示例数据兜底，可切 Supabase';
+    try {
+      renderAll();
+      setView('home');
+      el('dataSourceBadge').textContent = getSupabaseModeText();
+      el('sourceText').textContent = supabaseClient ? '示例数据兜底，可切 Supabase' : '示例数据兜底，可切 Supabase';
 
-    if (supabase) {
-      syncFromCloud();
+      if (supabaseClient) {
+        syncFromCloud();
+      }
+    } catch (err) {
+      console.error('Dashboard init failed:', err);
+      const cards = document.getElementById('platformCards');
+      if (cards && !cards.children.length) {
+        cards.innerHTML = `
+          <button type="button" class="platform-card"><strong>微信视频号</strong><div class="meta">私域 / 直播 / 触达</div><span class="num">点进去看 视频号</span></button>
+          <button type="button" class="platform-card"><strong>微信公众号</strong><div class="meta">文章 / 搜索 / 长内容</div><span class="num">点进去看 公众号</span></button>
+          <button type="button" class="platform-card"><strong>小红书</strong><div class="meta">种草 / 搜索 / 爆款</div><span class="num">点进去看 小红书</span></button>
+          <button type="button" class="platform-card"><strong>抖音</strong><div class="meta">短视频 / 完播 / 转化</div><span class="num">点进去看 抖音</span></button>
+        `;
+      }
     }
   </script>
 </body>
