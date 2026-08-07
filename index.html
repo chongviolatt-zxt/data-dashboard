@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>数据看板上传版</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --panel: #ffffff;
+      --line: rgba(15, 23, 42, 0.08);
+      --line-soft: rgba(15, 23, 42, 0.05);
+      --text: #14202e;
+      --muted: #64748b;
+      --primary: #10b981;
+      --primary-soft: rgba(16, 185, 129, 0.10);
+      --primary-2: #3b82f6;
+      --warn: #f59e0b;
+      --danger: #f43f5e;
+      --radius: 20px;
+      --shadow: 0 12px 40px rgba(15, 23, 42, 0.06);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Outfit', sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(16,185,129,0.08), transparent 30%),
+        radial-gradient(circle at top right, rgba(59,130,246,0.07), transparent 28%),
+        var(--bg);
+    }
+    .wrap { max-width: 1240px; margin: 0 auto; padding: 28px 20px 44px; }
+    .hero {
+      display: grid;
+      grid-template-columns: 1.35fr 0.85fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .hero-main { padding: 24px; position: relative; overflow: hidden; }
+    .hero-main::after {
+      content: "";
+      position: absolute; inset: auto -40px -40px auto;
+      width: 180px; height: 180px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(16,185,129,0.16), transparent 70%);
+      pointer-events: none;
+    }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 7px 12px; border-radius: 999px;
+      background: var(--primary-soft); color: #0f766e; font-size: 13px; font-weight: 600;
+    }
+    h1 {
+      margin: 14px 0 10px;
+      font-size: 34px; line-height: 1.1; letter-spacing: -0.03em;
+      font-weight: 700;
+    }
+    .lead {
+      margin: 0; max-width: 700px; color: var(--muted); font-size: 15px; line-height: 1.62;
+    }
+    .hero-grid {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 18px;
+    }
+    .metric {
+      padding: 14px 15px; background: linear-gradient(180deg, #fff, #fcfffd);
+      border: 1px solid var(--line-soft); border-radius: 16px;
+    }
+    .metric .label { color: var(--muted); font-size: 12px; margin-bottom: 7px; }
+    .metric .value { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; }
+    .metric .delta { font-family: 'JetBrains Mono', monospace; font-size: 12px; margin-top: 6px; color: #0f766e; }
+    .hero-side { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+    .upload-box {
+      border: 1.5px dashed rgba(16,185,129,0.36);
+      background: linear-gradient(180deg, rgba(16,185,129,0.05), rgba(255,255,255,0.96));
+      border-radius: 18px; padding: 18px;
+    }
+    .upload-box h2 { margin: 0 0 8px; font-size: 18px; }
+    .upload-box p { margin: 0 0 14px; color: var(--muted); font-size: 14px; line-height: 1.6; }
+    .upload-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    input[type="file"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      font-family: inherit;
+    }
+    button {
+      border: 0; border-radius: 12px; padding: 11px 14px;
+      font-family: inherit; font-weight: 600; cursor: pointer;
+      transition: .2s ease;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-secondary { background: #eef2ff; color: #3730a3; }
+    .btn-ghost { background: #f8fafc; color: #334155; border: 1px solid var(--line); }
+    button:hover { transform: translateY(-1px); }
+    .hint-list {
+      display: grid; gap: 8px; margin: 0; padding: 0; list-style: none;
+    }
+    .hint-list li {
+      display: flex; gap: 10px; align-items: flex-start;
+      font-size: 13px; color: #334155; line-height: 1.5;
+      padding: 10px 12px; border-radius: 12px; background: #fff; border: 1px solid var(--line-soft);
+    }
+    .hint-dot {
+      width: 9px; height: 9px; border-radius: 50%; margin-top: 6px; flex: 0 0 auto; background: var(--primary);
+    }
+    .section { margin-top: 18px; }
+    .section-head {
+      display: flex; align-items: end; justify-content: space-between; gap: 14px;
+      margin: 22px 2px 12px;
+    }
+    .section-head h2 { margin: 0; font-size: 22px; letter-spacing: -0.02em; }
+    .section-head p { margin: 0; color: var(--muted); font-size: 13px; }
+    .grid-2 { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .panel { padding: 18px; }
+    .panel h3 { margin: 0 0 14px; font-size: 16px; }
+    .panel-sub { color: var(--muted); font-size: 13px; margin-top: -8px; margin-bottom: 12px; }
+    .table-wrap { overflow: auto; border-radius: 14px; border: 1px solid var(--line-soft); }
+    table { width: 100%; border-collapse: collapse; min-width: 860px; }
+    th, td {
+      text-align: left; padding: 12px 12px; border-bottom: 1px solid var(--line-soft);
+      font-size: 13px; vertical-align: top;
+    }
+    th { position: sticky; top: 0; background: #fcfdfd; color: #334155; font-weight: 600; }
+    td { color: #1f2937; }
+    .platform-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 10px; border-radius: 999px; background: #f8fafc; color: #0f172a; font-size: 12px; font-weight: 600;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+    .bar-row { display: grid; grid-template-columns: 120px 1fr 74px; align-items: center; gap: 12px; padding: 7px 0; }
+    .bar-track { height: 14px; background: #eef2f7; border-radius: 999px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--primary), var(--primary-2)); }
+    .bar-val { text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #475569; }
+    .mini-note { font-size: 12px; color: var(--muted); line-height: 1.6; }
+    .footer-note {
+      margin-top: 16px; padding: 16px 18px; border-radius: 16px;
+      background: #fff; border: 1px solid var(--line); color: #334155; font-size: 13px; line-height: 1.6;
+    }
+    .status {
+      margin-top: 12px; padding: 12px 14px; border-radius: 14px;
+      background: #f8fafc; border: 1px solid var(--line-soft); font-size: 13px; color: #334155;
+      min-height: 46px;
+    }
+    canvas { width: 100% !important; height: 320px !important; }
+    @media (max-width: 980px) {
+      .hero, .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .hero-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      h1 { font-size: 28px; }
+    }
+    @media (max-width: 640px) {
+      .wrap { padding: 16px 12px 28px; }
+      .hero-grid { grid-template-columns: 1fr; }
+      canvas { height: 260px !important; }
+      .bar-row { grid-template-columns: 92px 1fr 56px; }
+      table { min-width: 760px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="card hero-main">
+        <span class="eyebrow">数据看板 · 上传版</span>
+        <h1>上传 Excel / CSV，立刻看到多平台内容表现</h1>
+        <p class="lead">这是给你们公司内部先跑起来的第一版。你自己把各平台官方后台导出的数据丢进来，页面会自动汇总总浏览量、粉丝数、完播率、点赞率、收藏率、爆款内容和周月表现。先把骨架搭稳，再谈自动抓取。</p>
+        <div class="hero-grid">
+          <div class="metric">
+            <div class="label">总浏览量</div>
+            <div class="value" id="totalViews">8,023</div>
+            <div class="delta">近 30 天汇总</div>
+          </div>
+          <div class="metric">
+            <div class="label">总点赞</div>
+            <div class="value" id="totalLikes">233</div>
+            <div class="delta">来自内容级数据</div>
+          </div>
+          <div class="metric">
+            <div class="label">总收藏</div>
+            <div class="value" id="totalFavorites">87</div>
+            <div class="delta">收藏率可继续算</div>
+          </div>
+          <div class="metric">
+            <div class="label">爆款内容</div>
+            <div class="value" id="hotCount">4</div>
+            <div class="delta">按示例阈值标记</div>
+          </div>
+        </div>
+      </div>
+      <aside class="card hero-side">
+        <div class="upload-box">
+          <h2>上传你的数据文件</h2>
+          <p>支持 CSV。你也可以先把各平台后台导出的表整理成同样的列名，页面会直接读取。没有上传时，先看示例数据也行。</p>
+          <input id="fileInput" type="file" accept=".csv,.xlsx,.xls" />
+          <div class="upload-row" style="margin-top:12px;">
+            <button class="btn-primary" id="loadSample">加载示例数据</button>
+            <button class="btn-secondary" id="clearData">清空并重置</button>
+          </div>
+          <div class="status" id="statusBox">当前状态：等待你上传 CSV。字段建议包含：平台、账号、标题、发布日期、阅读数、点赞数、评论数、收藏数、链接、摘要。</div>
+        </div>
+        <ul class="hint-list">
+          <li><span class="hint-dot"></span><span>先支持 CSV，最适合代码小白。Excel 可后面再加。</span></li>
+          <li><span class="hint-dot"></span><span>同一套字段可以接公众号、视频号、小红书、抖音、B站、LinkedIn、CSDN。</span></li>
+          <li><span class="hint-dot"></span><span>第一版先把“看数据”跑通，自动抓取放到第二阶段。</span></li>
+        </ul>
+      </aside>
+    </section>
+
+    <div class="section-head">
+      <div>
+        <h2>平台概览</h2>
+        <p>按平台聚合后的内容表现和互动强度</p>
+      </div>
+    </div>
+    <section class="grid-2">
+      <div class="card panel">
+        <h3>平台浏览量对比</h3>
+        <p class="panel-sub">示例数据按平台聚合，上传后会自动刷新。</p>
+        <div id="platformBars"></div>
+      </div>
+      <div class="card panel">
+        <h3>浏览量趋势</h3>
+        <p class="panel-sub">示例折线图，后面可改成按日/周/月切换。</p>
+        <canvas id="trendChart"></canvas>
+      </div>
+    </section>
+
+    <div class="section-head">
+      <div>
+        <h2>内容表现</h2>
+        <p>每条内容的数据明细、爆款标记和互动情况</p>
+      </div>
+    </div>
+    <section class="grid-3">
+      <div class="card panel" style="grid-column: span 2;">
+        <h3>内容明细表</h3>
+        <p class="panel-sub">你上传的 CSV 会直接填进这里。先按这个结构整理，最省事。</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>平台</th>
+                <th>标题</th>
+                <th>发布日期</th>
+                <th>阅读/播放</th>
+                <th>点赞</th>
+                <th>收藏</th>
+                <th>评论</th>
+                <th>爆款</th>
+              </tr>
+            </thead>
+            <tbody id="contentTable"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card panel">
+        <h3>互动强度排行</h3>
+        <p class="panel-sub">综合点赞、收藏、评论密度排序。</p>
+        <div id="engagementBars"></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="card panel">
+        <h3>你后面要交给团队的统一字段</h3>
+        <p class="panel-sub">先把口径定住，后面不容易乱。</p>
+        <div class="footer-note">
+          <strong>建议字段：</strong> 平台、账号、内容ID、标题、内容类型、发布日期、阅读/播放、点赞、收藏、评论、转发、粉丝数、完播率、点赞率、收藏率、链接、摘要、是否爆款、周/月周期。
+          <br/><br/>
+          <strong>提醒：</strong> 公众号的“阅读数”和抖音的“播放数”不要硬合并成一个总排名，先分平台看，再做横向参考。这个最容易乱，我先帮你踩住坑了。
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const sampleRows = [
+      { platform: 'CSDN', account: 'tudoSearcher', title: '手机、平板、电脑同时控制Claude Code / Codex ?：Paseo实战指南', date: '2026-06-10', views: 824, likes: 14, favorites: 4, comments: 0, hot: '是' },
+      { platform: 'CSDN', account: 'tudoSearcher', title: '工业级IP KVM实现硬件级远程抢救', date: '2026-05-18', views: 1170, likes: 32, favorites: 10, comments: 1, hot: '是' },
+      { platform: 'CSDN', account: 'tudoSearcher', title: 'LoRa和LoRaWAN有什么区别？物联网通信协议选型', date: '2026-05-19', views: 934, likes: 9, favorites: 15, comments: 0, hot: '否' },
+      { platform: 'CSDN', account: 'tudoSearcher', title: '为什么我的服务延迟忽高忽低？从TCP角度深度排查', date: '2026-05-12', views: 699, likes: 16, favorites: 6, comments: 2, hot: '否' },
+      { platform: '微信公众号', account: '网聚云联', title: '零信任网络入门：为什么传统防火墙已经不够用了', date: '2026-05-14', views: 1520, likes: 41, favorites: 18, comments: 5, hot: '是' },
+      { platform: '抖音', account: '网聚云联官方', title: '工业级IP KVM 一分钟看懂', date: '2026-05-20', views: 2860, likes: 103, favorites: 22, comments: 14, hot: '是' },
+      { platform: '小红书', account: '网聚云联', title: '运维人半夜救火的真实感受', date: '2026-05-22', views: 1016, likes: 57, favorites: 31, comments: 6, hot: '是' }
+    ];
+
+    let currentRows = [...sampleRows];
+    let trendChart = null;
+
+    function parseCSV(text) {
+      const lines = text.replace(/^\uFEFF/, '').trim().split(/\r?\n/).filter(Boolean);
+      if (lines.length < 2) return [];
+      const headers = splitCSVLine(lines[0]);
+      return lines.slice(1).map(line => {
+        const values = splitCSVLine(line);
+        const obj = {};
+        headers.forEach((h, idx) => obj[h.trim()] = (values[idx] ?? '').trim());
+        return obj;
+      });
+    }
+
+    async function parseExcel(file) {
+      if (typeof XLSX === 'undefined') {
+        throw new Error('Excel 解析库未加载成功');
+      }
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const firstSheet = workbook.SheetNames[0];
+      if (!firstSheet) return [];
+      const sheet = workbook.Sheets[firstSheet];
+      return XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    }
+
+    function splitCSVLine(line) {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        const next = line[i + 1];
+        if (char === '"') {
+          if (inQuotes && next === '"') { current += '"'; i++; }
+          else { inQuotes = !inQuotes; }
+        } else if (char === ',' && !inQuotes) {
+          result.push(current);
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      result.push(current);
+      return result;
+    }
+
+    function n(v) {
+      const x = Number(String(v).replace(/,/g, ''));
+      return Number.isFinite(x) ? x : 0;
+    }
+
+    function normalizeRows(rows) {
+      return rows.map(r => ({
+        platform: r['平台'] || r.platform || r['Platform'] || '未知平台',
+        account: r['账号'] || r.account || '',
+        title: r['标题'] || r.title || r['名称'] || '未命名内容',
+        date: (r['发布日期'] || r.date || '').toString().slice(0, 10),
+        views: n(r['阅读数'] ?? r['播放量'] ?? r['浏览量'] ?? r.views),
+        likes: n(r['点赞数'] ?? r['点赞'] ?? r.likes),
+        favorites: n(r['收藏数'] ?? r['收藏'] ?? r.favorites),
+        comments: n(r['评论数'] ?? r['评论'] ?? r.comments),
+        hot: String(r['是否爆款'] ?? r.hot ?? '').includes('是') ? '是' : '否'
+      }));
+    }
+
+    function render(rows) {
+      const data = normalizeRows(rows);
+      currentRows = data;
+      const totalViews = data.reduce((s, r) => s + r.views, 0);
+      const totalLikes = data.reduce((s, r) => s + r.likes, 0);
+      const totalFavorites = data.reduce((s, r) => s + r.favorites, 0);
+      const hotCount = data.filter(r => r.hot === '是').length;
+      document.getElementById('totalViews').textContent = formatNum(totalViews);
+      document.getElementById('totalLikes').textContent = formatNum(totalLikes);
+      document.getElementById('totalFavorites').textContent = formatNum(totalFavorites);
+      document.getElementById('hotCount').textContent = hotCount;
+
+      const platformMap = new Map();
+      data.forEach(r => {
+        const key = r.platform;
+        const item = platformMap.get(key) || { views: 0, likes: 0, favorites: 0, comments: 0, count: 0 };
+        item.views += r.views;
+        item.likes += r.likes;
+        item.favorites += r.favorites;
+        item.comments += r.comments;
+        item.count += 1;
+        platformMap.set(key, item);
+      });
+
+      const platforms = [...platformMap.entries()].sort((a, b) => b[1].views - a[1].views);
+      renderBars('platformBars', platforms.map(([name, item]) => ({ label: name, value: item.views, suffix: '阅', max: platforms[0]?.[1].views || 1 })));
+      renderBars('engagementBars', platforms.map(([name, item]) => ({ label: name, value: Math.round((item.likes + item.favorites * 2 + item.comments * 3) / Math.max(1, item.count)), suffix: '分', max: Math.max(...platforms.map(p => Math.round((p[1].likes + p[1].favorites * 2 + p[1].comments * 3) / Math.max(1, p[1].count)))) || 1 })));
+      renderTable(data);
+      renderChart(data);
+
+      document.getElementById('statusBox').textContent = `当前状态：已加载 ${data.length} 条内容，支持继续上传 CSV 覆盖示例数据。`;
+    }
+
+    function renderBars(id, items) {
+      const box = document.getElementById(id);
+      box.innerHTML = '';
+      items.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'bar-row';
+        row.innerHTML = `
+          <div>${item.label}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.max(10, item.value / item.max * 100)}%"></div></div>
+          <div class="bar-val">${formatNum(item.value)}${item.suffix}</div>
+        `;
+        box.appendChild(row);
+      });
+    }
+
+    function renderTable(rows) {
+      const tbody = document.getElementById('contentTable');
+      tbody.innerHTML = '';
+      rows.slice().sort((a, b) => b.views - a.views).forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><span class="platform-tag"><span class="dot"></span>${r.platform}</span></td>
+          <td><strong>${escapeHTML(r.title)}</strong><div class="mini-note">${escapeHTML(r.account || '')}</div></td>
+          <td>${escapeHTML(r.date || '-')}</td>
+          <td>${formatNum(r.views)}</td>
+          <td>${formatNum(r.likes)}</td>
+          <td>${formatNum(r.favorites)}</td>
+          <td>${formatNum(r.comments)}</td>
+          <td>${r.hot}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderChart(rows) {
+      const sorted = rows.slice().sort((a, b) => a.date.localeCompare(b.date));
+      const labels = sorted.map((r, idx) => `${r.date || '未填'}-${idx + 1}`);
+      const views = sorted.map(r => r.views);
+      if (trendChart) trendChart.destroy();
+      const ctx = document.getElementById('trendChart').getContext('2d');
+      trendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: '阅读/播放',
+            data: views,
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16,185,129,0.10)',
+            fill: true,
+            tension: 0.35,
+            pointRadius: 3,
+            pointBackgroundColor: '#10b981',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { backgroundColor: '#0f172a', titleColor: '#fff', bodyColor: '#fff' }
+          },
+          scales: {
+            x: { grid: { color: 'rgba(15,23,42,0.04)' }, ticks: { color: '#64748b', maxRotation: 0, autoSkip: true } },
+            y: { grid: { color: 'rgba(15,23,42,0.05)' }, ticks: { color: '#64748b' } }
+          }
+        }
+      });
+    }
+
+    function formatNum(num) {
+      return Number(num || 0).toLocaleString('zh-CN');
+    }
+
+    function escapeHTML(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    document.getElementById('loadSample').addEventListener('click', () => {
+      render(sampleRows);
+    });
+
+    document.getElementById('clearData').addEventListener('click', () => {
+      currentRows = [];
+      document.getElementById('contentTable').innerHTML = '';
+      document.getElementById('platformBars').innerHTML = '';
+      document.getElementById('engagementBars').innerHTML = '';
+      document.getElementById('totalViews').textContent = '0';
+      document.getElementById('totalLikes').textContent = '0';
+      document.getElementById('totalFavorites').textContent = '0';
+      document.getElementById('hotCount').textContent = '0';
+      if (trendChart) { trendChart.destroy(); trendChart = null; }
+      document.getElementById('statusBox').textContent = '当前状态：已清空。请上传 CSV 或点击“加载示例数据”。';
+    });
+
+    document.getElementById('fileInput').addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      let rows = [];
+      try {
+        if (ext === 'xlsx' || ext === 'xls') {
+          rows = await parseExcel(file);
+        } else {
+          const text = await file.text();
+          rows = parseCSV(text);
+        }
+      } catch (err) {
+        document.getElementById('statusBox').textContent = `当前状态：文件解析失败，${err.message}`;
+        return;
+      }
+      if (!rows.length) {
+        document.getElementById('statusBox').textContent = '当前状态：文件读到了，但没识别出数据行。请确认第一行是表头。';
+        return;
+      }
+      render(rows);
+    });
+
+    render(sampleRows);
+  </script>
+</body>
+</html>
