@@ -696,12 +696,13 @@
           <span>当前操作者</span>
           <input id="operatorInput" value="张三" />
         </label>
-        <button class="btn soft" id="goHomeBtn">主页</button>
-        <button class="btn" id="syncCloudBtn">从云端加载</button>
-        <button class="btn" id="saveCloudBtn">保存到云端</button>
-        <button class="btn" id="openUploadBtn">上传数据</button>
-        <button class="btn" id="openAddPlatformBtn">新增平台</button>
-        <button class="btn primary" id="switchViewBtn">进入平台页</button>
+        <button type="button" class="btn soft" id="goHomeBtn" onclick="setView('home')">主页</button>
+        <button type="button" class="btn" id="syncCloudBtn" onclick="syncFromCloud()">从云端加载</button>
+        <button type="button" class="btn" id="seedPlatformsBtn" onclick="seedSamplePlatforms()">初始化示例平台</button>
+        <button type="button" class="btn" id="saveCloudBtn" onclick="saveCurrentToCloud()">保存到云端</button>
+        <button type="button" class="btn" id="openUploadBtn" onclick="openModal('uploadModal')">上传数据</button>
+        <button type="button" class="btn" id="openAddPlatformBtn" onclick="openModal('addPlatformModal')">新增平台</button>
+        <button type="button" class="btn primary" id="switchViewBtn" onclick="toggleMainView()">进入平台页</button>
       </div>
     </header>
 
@@ -823,10 +824,10 @@
         <div class="section-head">
           <h3>平台页 Platform</h3>
           <div class="tabs">
-            <button class="tab active" data-tab="overview">概览</button>
-            <button class="tab" data-tab="contents">内容</button>
-            <button class="tab" data-tab="logs">日志</button>
-            <button class="tab" data-tab="review">复盘</button>
+            <button type="button" class="tab active" data-tab="overview" onclick="switchTab('overview')">概览</button>
+            <button type="button" class="tab" data-tab="contents" onclick="switchTab('contents')">内容</button>
+            <button type="button" class="tab" data-tab="logs" onclick="switchTab('logs')">日志</button>
+            <button type="button" class="tab" data-tab="review" onclick="switchTab('review')">复盘</button>
           </div>
         </div>
 
@@ -954,7 +955,7 @@
     <div class="modal">
       <div class="modal-head">
         <strong>上传数据</strong>
-        <button class="btn" data-close="uploadModal">关闭</button>
+        <button type="button" class="btn" data-close="uploadModal" onclick="closeModal('uploadModal')">关闭</button>
       </div>
       <div class="modal-body">
         <div class="form-grid">
@@ -991,7 +992,7 @@
     <div class="modal">
       <div class="modal-head">
         <strong>新增平台</strong>
-        <button class="btn" data-close="addPlatformModal">关闭</button>
+        <button type="button" class="btn" data-close="addPlatformModal" onclick="closeModal('addPlatformModal')">关闭</button>
       </div>
       <div class="modal-body">
         <div class="form-grid">
@@ -1092,9 +1093,7 @@
         week: '本周视频号整体浏览增长 18%，其中“私域承接”类内容表现最好。建议继续复用强 CTA 脚本，压缩纯介绍类内容。',
         month: '本月视频号在业务结果上更强，但完播率还有提升空间。下个月重点抓首 3 秒和结尾引导。',
         conversion: '当前线索数 86，主要来自内容末尾引导和直播切片。若要继续放大，需要把内容与企微承接链路进一步打通。',
-        spark: [
-          60, 72, 66, 88, 94, 108, 100, 118
-        ]
+        spark: [60, 72, 66, 88, 94, 108, 100, 118]
       },
       {
         id: 'wechat_mp',
@@ -1148,9 +1147,7 @@
         week: '本周公众号的收藏率表现不错，说明长内容在沉淀价值上更强。下一步可以继续强化系列化写法。',
         month: '月度看公众号更适合作为知识库和长线资产，流量不一定最大，但留存价值更稳。',
         conversion: '留资数 43，说明内容有一定转化能力，但仍需要更明确的 CTA 和路径承接。',
-        spark: [
-          52, 54, 57, 63, 68, 71, 74, 80
-        ]
+        spark: [52, 54, 57, 63, 68, 71, 74, 80]
       },
       {
         id: 'xhs',
@@ -1204,9 +1201,7 @@
         week: '小红书本周爆款数最多，说明标题和封面策略已经开始起作用。继续围绕用户问题写，会更稳。',
         month: '月度维度看，小红书是最适合冲曝光和收藏的阵地，后面可以重点做系列化选题。',
         conversion: '咨询数 58，说明内容已经有转化苗头，但还可以更明确地把用户引到下一步动作。',
-        spark: [
-          64, 78, 82, 95, 110, 108, 124, 138
-        ]
+        spark: [64, 78, 82, 95, 110, 108, 124, 138]
       },
       {
         id: 'douyin',
@@ -1260,9 +1255,7 @@
         week: '抖音的完播率最值得盯，说明短内容结构已经开始稳定。可以继续复用前 3 秒钩子。',
         month: '抖音这个月的转化动作表现不错，但内容节奏还可以更统一。建议把爆款结构做成模板。',
         conversion: '线索数 102，是当前最强的转化平台之一。后面要重点看内容和转化页之间的衔接。',
-        spark: [
-          70, 92, 88, 104, 118, 122, 130, 146
-        ]
+        spark: [70, 92, 88, 104, 118, 122, 130, 146]
       }
     ];
 
@@ -1377,10 +1370,30 @@
       return platforms.find(p => p.id === state.platform) || platforms[0];
     }
 
+    function toggleMainView() {
+      setView(state.view === 'home' ? 'platform' : 'home');
+      if (state.view === 'platform') renderPlatform();
+    }
+
+    function switchTab(tab) {
+      state.tab = tab;
+      renderPlatform();
+    }
+
+    function openModal(id) {
+      const modal = el(id);
+      if (modal) modal.classList.add('show');
+    }
+
+    function closeModal(id) {
+      const modal = el(id);
+      if (modal) modal.classList.remove('show');
+    }
+
     function renderHome() {
       const cards = el('platformCards');
       cards.innerHTML = platforms.map(p => `
-        <button class="platform-card ${p.id === state.platform ? 'active' : ''}" data-platform="${p.id}">
+        <button type="button" class="platform-card ${p.id === state.platform ? 'active' : ''}" data-platform="${p.id}" onclick="setPlatform('${p.id}')">
           <strong>${p.name}</strong>
           <div class="meta">${p.category}</div>
           <div class="meta" style="margin-top:8px;">支持独立看板、独立日志、独立复盘。</div>
@@ -1463,10 +1476,9 @@
 
     function renderPlatformList() {
       el('platformList').innerHTML = platforms.map(p => `
-        <div class="item ${p.id === state.platform ? 'active' : ''}" data-platform-sel="${p.id}">
-          <strong>${p.name}</strong>
-          ${p.category}
-        </div>
+        <button type="button" class="menu-item ${p.id === state.platform ? 'active' : ''}" data-platform-sel="${p.id}" onclick="setPlatform('${p.id}')">
+          <span><strong>${p.name}</strong><br>${p.category}</span>
+        </button>
       `).join('');
       el('uploadPlatform').innerHTML = platforms.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
       el('uploadPlatform').value = state.platform;
@@ -1483,6 +1495,35 @@
       renderPlatform();
       if (state.dataSource !== 'supabase') {
         el('sourceText').textContent = '示例数据兜底，可切 Supabase';
+      }
+    }
+
+    async function seedSamplePlatforms() {
+      if (!supabase) {
+        state.dataSource = 'sample';
+        state.platform = 'wechat_video';
+        renderAll();
+        setView('home');
+        el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · 示例平台已初始化';
+        el('sourceText').textContent = '已初始化微信视频号 / 公众号 / 抖音 / 小红书';
+        return;
+      }
+      try {
+        el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · 正在初始化示例平台到云端';
+        el('sourceText').textContent = '正在清空并写入示例平台数据...';
+        await saveCurrentToCloud();
+        state.dataSource = 'supabase';
+        state.platform = 'wechat_video';
+        renderAll();
+        setView('home');
+        el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · 示例平台已写入云端';
+        el('sourceText').textContent = '已写入微信视频号 / 公众号 / 抖音 / 小红书';
+        await syncFromCloud();
+      } catch (err) {
+        state.dataSource = 'sample';
+        renderAll();
+        el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · 初始化失败';
+        el('sourceText').textContent = `写入云端失败：${err.message}`;
       }
     }
 
@@ -1551,12 +1592,19 @@
     }
 
     function exportCurrentStructure() {
-      const p = getPlatform();
+      const contents = [];
+      const importJobs = [];
+      const auditLogs = [];
+      platforms.forEach(p => {
+        contents.push(...toDbContentRows(p));
+        importJobs.push(...toDbImportRows(p));
+        auditLogs.push(...toDbAuditRows(p));
+      });
       return {
         platforms: platforms.map(toDbPlatformRow),
-        contents: toDbContentRows(p),
-        import_jobs: toDbImportRows(p),
-        audit_logs: toDbAuditRows(p)
+        contents,
+        import_jobs: importJobs,
+        audit_logs: auditLogs
       };
     }
 
@@ -1570,11 +1618,12 @@
         [TABLES.auditLogs, payload.audit_logs]
       ];
       for (const [table, rows] of tables) {
-        if (!rows.length) continue;
         const { error: delErr } = await supabase.from(table).delete().gte('id', 0);
         if (delErr) throw delErr;
-        const { error: insertErr } = await supabase.from(table).insert(rows);
-        if (insertErr) throw insertErr;
+        if (rows.length) {
+          const { error: insertErr } = await supabase.from(table).insert(rows);
+          if (insertErr) throw insertErr;
+        }
       }
       state.dataSource = 'supabase';
       renderAll();
@@ -1609,6 +1658,15 @@
       state.operator = e.target.value.trim() || '未命名';
       renderPlatformList();
     });
+
+    window.setView = setView;
+    window.setPlatform = setPlatform;
+    window.toggleMainView = toggleMainView;
+    window.switchTab = switchTab;
+    window.openModal = openModal;
+    window.closeModal = closeModal;
+    window.syncFromCloud = syncFromCloud;
+    window.saveCurrentToCloud = saveCurrentToCloud;
 
     renderAll();
     setView('home');
