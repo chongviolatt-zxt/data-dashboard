@@ -490,20 +490,84 @@
     .sidebar {
       border: 1px solid var(--line);
       border-radius: 18px;
-      background: #fff;
+      background: linear-gradient(180deg, #fff, #fbfaf7);
       padding: 14px;
+      box-shadow: var(--shadow-soft);
     }
     .sidebar h4, .content-area h4, .chart-card h4 { margin: 0 0 10px; font-size: 14px; }
+    .platform-switcher-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .platform-switcher-head h4 { margin: 0; }
+    .platform-switcher-head p {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 11.5px;
+      line-height: 1.45;
+    }
+    .platform-count {
+      flex: 0 0 auto;
+      min-width: 30px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+    }
     .sidebar .item {
-      padding: 10px 12px;
-      border-radius: 14px;
-      border: 1px solid var(--line);
-      margin-bottom: 8px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid var(--line-soft);
+      margin-bottom: 9px;
+      font: inherit;
       font-size: 12.5px;
       color: #475569;
-      background: #fcfcfb;
+      background: #fff;
+      text-align: left;
+      cursor: pointer;
+      transition: 0.18s ease;
     }
-    .sidebar .item strong { display: block; font-size: 13px; color: #1f2937; margin-bottom: 4px; }
+    .sidebar .item:last-child { margin-bottom: 0; }
+    .sidebar .item:hover { transform: translateY(-1px); border-color: rgba(47,111,94,0.25); box-shadow: var(--shadow-soft); }
+    .sidebar .item.active {
+      border-color: rgba(47,111,94,0.38);
+      background: linear-gradient(135deg, rgba(47,111,94,0.10), rgba(255,255,255,0.98));
+      box-shadow: 0 8px 20px rgba(47,111,94,0.09);
+    }
+    .platform-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 13px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: 0 6px 14px rgba(20,23,30,0.10);
+    }
+    .platform-mark.primary { background: linear-gradient(135deg, #2f6f5e, #65a58f); }
+    .platform-mark.amber { background: linear-gradient(135deg, #c97b3f, #e4ab72); }
+    .platform-mark.rose { background: linear-gradient(135deg, #b06367, #d68b90); }
+    .platform-mark.cyan { background: linear-gradient(135deg, #4c8df6, #78b0ff); }
+    .platform-switch-copy { min-width: 0; flex: 1; }
+    .sidebar .item strong { display: block; font-size: 13.5px; color: #1f2937; margin-bottom: 3px; }
+    .platform-category { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .platform-meta { display: flex; align-items: center; gap: 7px; margin-top: 7px; color: var(--muted-2); font-size: 10.5px; }
+    .platform-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #cbd5e1; }
+    .platform-status-dot.ready { background: var(--green); box-shadow: 0 0 0 3px rgba(42,140,109,0.10); }
+    .platform-arrow { color: #a7b0be; font-size: 17px; transition: transform .18s ease; }
+    .sidebar .item:hover .platform-arrow, .sidebar .item.active .platform-arrow { color: var(--primary); transform: translateX(2px); }
     .chart-card, .content-area {
       border: 1px solid var(--line);
       border-radius: 18px;
@@ -707,35 +771,37 @@
 
     <section class="hero">
       <div class="card hero-main">
-        <span class="eyebrow" id="dataSourceBadge">GitHub Pages 主页面 · Supabase Ready</span>
-        <h2 class="hero-title">首页和平台页已经变成主页面版本，数据源已给 Supabase 留好口子</h2>
+        <span class="eyebrow" id="dataSourceBadge">数据看板 · 正在检查云端连接</span>
+        <h2 class="hero-title">一处查看各平台表现，上传官方后台数据后自动生成分析</h2>
         <p class="lead">
-          这版可以直接作为 GitHub Pages 的 index.html 使用。现在默认用页面内置示例数据兜底；等 Supabase 新表建好后，点击“从云端加载”就会按预留的数据结构读取平台、内容、导入记录和操作日志。
+          选择微信视频号、微信公众号、小红书或抖音，上传平台官方后台导出的 CSV / Excel 文件。系统会按不同平台的字段口径识别内容、浏览和互动数据，并保留原始文件名、分析结果、操作人与上传时间。
         </p>
         <div class="hero-tags">
-          <span class="tag">点击平台切换</span>
-          <span class="tag">上传弹窗</span>
-          <span class="tag">删除记录</span>
-          <span class="tag">导入日志</span>
-          <span class="tag">周/月复盘</span>
-          <span class="tag">新增平台入口</span>
+          <span class="tag">平台独立看板</span>
+          <span class="tag">CSV / Excel 上传</span>
+          <span class="tag">自动字段识别</span>
+          <span class="tag">互动与爆款分析</span>
+          <span class="tag">导入与操作留痕</span>
+          <span class="tag">周度 / 月度复盘</span>
         </div>
       </div>
       <aside class="card hero-side">
         <div class="side-block">
-          <div class="side-title"><i></i> 当前原型状态</div>
+          <div class="side-title"><i></i> 当前状态</div>
           <dl class="kv">
-            <dt>页面模式</dt><dd id="modeText">首页 Home</dd>
-            <dt>平台</dt><dd id="platformText">微信视频号</dd>
-            <dt>操作者</dt><dd id="operatorEcho">张三</dd>
-            <dt>数据源</dt><dd id="sourceText">示例数据兜底，可切 Supabase</dd>
+            <dt>所在页面</dt><dd id="modeText">主页</dd>
+            <dt>当前平台</dt><dd id="platformText">微信视频号</dd>
+            <dt>当前操作者</dt><dd id="operatorEcho">张三</dd>
+            <dt>数据状态</dt><dd id="sourceText">干净底座，等待上传数据</dd>
           </dl>
         </div>
         <div class="side-block">
-          <div class="side-title"><i></i> 下一步最顺的事</div>
-          <p class="lead" style="font-size:13px; margin:0; line-height:1.6;">
-            先把这个页面替换到 GitHub Pages，确认结构和交互没跑偏；然后再开始接 Supabase。别急着上复杂权限，先把使用路径跑通，效率会高很多。
-          </p>
+          <div class="side-title"><i></i> 建议操作顺序</div>
+          <ol class="timeline" style="margin-top:4px;">
+            <li><strong>填写操作者</strong><p>用于记录是谁上传和修改了数据。</p></li>
+            <li><strong>选择平台并上传文件</strong><p>使用平台官方后台导出的 CSV / Excel。</p></li>
+            <li><strong>进入平台页查看分析</strong><p>检查指标、内容明细、爆款标签和操作日志。</p></li>
+          </ol>
         </div>
       </aside>
     </section>
@@ -743,17 +809,17 @@
     <div class="main">
       <section class="section active" id="homeSection">
         <div class="section-head">
-          <h3>首页 Home</h3>
-          <p>负责入口、总览、最近动作。首页别抢戏，核心是让人三秒找到要去的平台。</p>
+          <h3>主页总览</h3>
+          <p>先看全局，再进入某个平台。这里显示当前已经上传并分析的数据，不用手动导入示例数据。</p>
         </div>
         <div class="panel">
           <div class="grid-2">
             <div>
               <div class="chip-row">
                 <span class="chip">当前操作者：<span id="operatorChip">张三</span></span>
-                <span class="chip">最近导入：2</span>
-                <span class="chip">待处理：1</span>
-                <span class="chip">新增平台：1</span>
+                <span class="chip">已配置平台：<span id="homePlatformCount">4</span></span>
+                <span class="chip">已有数据平台：<span id="homeDataPlatformCount">0</span></span>
+                <span class="chip">最近上传：<span id="homeImportCount">0</span></span>
               </div>
               <div class="grid-platforms" id="platformCards"></div>
             </div>
@@ -761,41 +827,21 @@
               <div class="shell">
                 <div class="shell-top">
                   <div class="dots"><span></span><span></span><span></span></div>
-                  <strong>首页右栏概览</strong>
-                  <span class="chip">Overview</span>
+                  <strong>全部平台数据概览</strong>
+                  <span class="chip">实时汇总</span>
                 </div>
                 <div style="padding:14px;">
                   <div class="kpi-grid" style="margin-bottom:12px;">
-                    <div class="kpi"><div class="label">总浏览</div><div class="value">128.6k</div><div class="hint">全部平台近 30 天</div></div>
-                    <div class="kpi"><div class="label">总粉丝</div><div class="value">52.4k</div><div class="hint">累计</div></div>
-                    <div class="kpi"><div class="label">爆款内容</div><div class="value">23</div><div class="hint">按阈值判定</div></div>
-                    <div class="kpi"><div class="label">活跃平台</div><div class="value">7</div><div class="hint">可继续扩展</div></div>
+                    <div class="kpi"><div class="label">总内容数</div><div class="value" id="homeTotalContents">0</div><div class="hint">当前已分析内容</div></div>
+                    <div class="kpi"><div class="label">总浏览量</div><div class="value" id="homeTotalViews">0</div><div class="hint">全部平台汇总</div></div>
+                    <div class="kpi"><div class="label">爆款内容</div><div class="value" id="homeHotCount">0</div><div class="hint">按平台阈值判定</div></div>
+                    <div class="kpi"><div class="label">导入批次</div><div class="value" id="homeImportBatches">0</div><div class="hint">保留操作人与文件名</div></div>
                   </div>
                   <div class="chart-box">
-                    <p class="chart-caption">近 7 天整体趋势</p>
-                    <svg class="spark" viewBox="0 0 520 160" preserveAspectRatio="none">
-                      <defs>
-                        <linearGradient id="fillHome" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="0%" stop-color="rgba(47,111,94,0.26)" />
-                          <stop offset="100%" stop-color="rgba(47,111,94,0.02)" />
-                        </linearGradient>
-                      </defs>
-                      <rect x="0" y="0" width="520" height="160" rx="16" fill="#fff" />
-                      <path d="M20 122 L90 108 L160 112 L230 90 L300 78 L370 62 L440 68 L500 50 L500 148 L20 148 Z" fill="url(#fillHome)"></path>
-                      <path d="M20 122 L90 108 L160 112 L230 90 L300 78 L370 62 L440 68 L500 50" fill="none" stroke="#2f6f5e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
-                      <circle cx="20" cy="122" r="4" fill="#2f6f5e"></circle>
-                      <circle cx="90" cy="108" r="4" fill="#2f6f5e"></circle>
-                      <circle cx="160" cy="112" r="4" fill="#2f6f5e"></circle>
-                      <circle cx="230" cy="90" r="4" fill="#2f6f5e"></circle>
-                      <circle cx="300" cy="78" r="4" fill="#2f6f5e"></circle>
-                      <circle cx="370" cy="62" r="4" fill="#2f6f5e"></circle>
-                      <circle cx="440" cy="68" r="4" fill="#2f6f5e"></circle>
-                      <circle cx="500" cy="50" r="4" fill="#2f6f5e"></circle>
-                    </svg>
-                    <div class="legend">
-                      <span class="legend-item"><span class="swatch primary"></span> 总浏览趋势</span>
-                      <span class="legend-item"><span class="swatch amber"></span> 新增导入</span>
-                      <span class="legend-item"><span class="swatch rose"></span> 删除记录</span>
+                    <p class="chart-caption" id="homeChartCaption">各平台浏览量对比 · 等待上传数据</p>
+                    <svg class="spark" id="homeChart" viewBox="0 0 520 160" preserveAspectRatio="none"></svg>
+                    <div class="legend" id="homeChartLegend">
+                      <span class="legend-item"><span class="swatch primary"></span> 上传数据后自动生成</span>
                     </div>
                   </div>
                 </div>
@@ -832,7 +878,13 @@
 
         <div class="grid-2">
           <div class="sidebar">
-            <h4>平台切换</h4>
+            <div class="platform-switcher-head">
+              <div>
+                <h4>平台切换</h4>
+                <p>选择平台，查看对应的数据分析</p>
+              </div>
+              <span class="platform-count" id="platformSwitcherCount">4</span>
+            </div>
             <div id="platformList"></div>
           </div>
           <div class="content-area">
@@ -945,8 +997,8 @@
     </div>
 
     <div class="footer">
-      <strong>这版原型说明：</strong>
-      现在已经可以从主页点进平台页、切换平台、查看内容和日志、打开上传弹窗。下一步只差把假数据换成 Supabase 真实数据，页面就能进入可用阶段了。
+      <strong>数据说明：</strong>
+      首页汇总来自各平台已经上传并分析的数据；平台页保留内容明细、导入记录和操作日志。正式使用时，请优先上传各平台官方后台导出的文件，并确保操作者姓名填写准确。
     </div>
   </div>
 
@@ -1388,6 +1440,55 @@
       if (modal) modal.classList.remove('show');
     }
 
+    function parseDisplayedMetric(value) {
+      const text = String(value || '').trim().toLowerCase().replace(/,/g, '');
+      const number = Number.parseFloat(text) || 0;
+      if (text.includes('w') || text.includes('万')) return number * 10000;
+      if (text.includes('k') || text.includes('千')) return number * 1000;
+      return number;
+    }
+
+    function formatCompactNumber(value) {
+      const n = Number(value) || 0;
+      if (n >= 10000) return `${(n / 10000).toFixed(1)}w`;
+      if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+      return String(Math.round(n));
+    }
+
+    function renderHomeOverview() {
+      const allContents = platforms.flatMap(p => Array.isArray(p.contents) ? p.contents : []);
+      const allImports = platforms.flatMap(p => Array.isArray(p.imports) ? p.imports : []);
+      const dataPlatforms = platforms.filter(p => Array.isArray(p.contents) && p.contents.length);
+      const totalViews = allContents.reduce((sum, row) => sum + parseDisplayedMetric(row[2]), 0);
+      const hotCount = allContents.filter(row => row[4] === '爆款').length;
+      el('homePlatformCount').textContent = String(platforms.length);
+      el('homeDataPlatformCount').textContent = String(dataPlatforms.length);
+      el('homeImportCount').textContent = String(allImports.length);
+      el('homeTotalContents').textContent = formatCompactNumber(allContents.length);
+      el('homeTotalViews').textContent = formatCompactNumber(totalViews);
+      el('homeHotCount').textContent = String(hotCount);
+      el('homeImportBatches').textContent = String(allImports.length);
+      el('homeChartCaption').textContent = dataPlatforms.length ? '各平台当前已上传数据的浏览量对比' : '各平台浏览量对比 · 上传数据后自动生成';
+
+      const chart = el('homeChart');
+      const maxViews = Math.max(1, ...platforms.map(p => (Array.isArray(p.contents) ? p.contents : []).reduce((sum, row) => sum + parseDisplayedMetric(row[2]), 0)));
+      const points = platforms.map((p, index) => {
+        const views = (Array.isArray(p.contents) ? p.contents : []).reduce((sum, row) => sum + parseDisplayedMetric(row[2]), 0);
+        const x = 28 + index * (464 / Math.max(1, platforms.length - 1));
+        const y = 136 - (views / maxViews) * 104;
+        return { x, y, views, p };
+      });
+      const path = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+      chart.innerHTML = `
+        <defs><linearGradient id="fillHomeDynamic" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="rgba(47,111,94,0.24)" /><stop offset="100%" stop-color="rgba(47,111,94,0.02)" /></linearGradient></defs>
+        <rect x="0" y="0" width="520" height="160" rx="16" fill="#fff"></rect>
+        <path d="${path} L 492 148 L 28 148 Z" fill="url(#fillHomeDynamic)"></path>
+        <path d="${path}" fill="none" stroke="#2f6f5e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
+        ${points.map(point => `<circle cx="${point.x}" cy="${point.y}" r="5" fill="#2f6f5e"></circle>`).join('')}
+      `;
+      el('homeChartLegend').innerHTML = points.map(point => `<span class="legend-item"><span class="swatch primary"></span>${point.p.short} ${formatCompactNumber(point.views)}</span>`).join('') || '<span class="legend-item"><span class="swatch primary"></span>暂无上传数据</span>';
+    }
+
     function renderHome() {
       const cards = el('platformCards');
       cards.innerHTML = platforms.map(p => `
@@ -1410,7 +1511,8 @@
       aggregatedHome.sort((a, b) => String(b[0]).localeCompare(String(a[0])));
       el('homeImportTable').innerHTML = aggregatedHome.length ? aggregatedHome.slice(0, 12).map(r => `
         <tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td><td><span class="status">${r[6]}</span></td></tr>
-      `).join('') : '<tr><td colspan="7"><div class="empty">暂无导入记录，等你上传第一份数据</div></td></tr>';
+      `).join('') : '<tr><td colspan="7"><div class="empty">暂无导入记录。选择平台并上传官方后台导出的 CSV / Excel，分析结果会显示在这里。</div></td></tr>';
+      renderHomeOverview();
     }
 
     function drawChart(platform) {
@@ -1478,7 +1580,7 @@
         card.classList.toggle('active', card.dataset.platform === p.id);
       });
       document.querySelectorAll('.menu-item').forEach(item => {
-        item.classList.toggle('active', item.textContent.includes(p.short || ''));
+        item.classList.toggle('active', item.dataset.platformSel === p.id);
       });
       document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
       const activePanel = el('tab-' + state.tab);
@@ -1489,18 +1591,35 @@
       el('switchViewBtn').textContent = '返回首页';
     }
 
+    function getPlatformMark(p) {
+      const marks = { wechat_video: '视', wechat_mp: '文', xhs: '红', douyin: '抖' };
+      return marks[p.id] || (p.short || p.name || '平').slice(0, 1);
+    }
+
     function renderPlatformList() {
-      el('platformList').innerHTML = platforms.map(p => `
-        <button type="button" class="menu-item ${p.id === state.platform ? 'active' : ''}" data-platform-sel="${p.id}" onclick="setPlatform('${p.id}')">
-          <span><strong>${p.name}</strong><br>${p.category}</span>
-        </button>
-      `).join('');
+      el('platformList').innerHTML = platforms.map(p => {
+        const contentCount = Array.isArray(p.contents) ? p.contents.length : 0;
+        const importCount = Array.isArray(p.imports) ? p.imports.length : 0;
+        const hasData = contentCount > 0;
+        return `
+          <button type="button" class="menu-item item ${p.id === state.platform ? 'active' : ''}" data-platform-sel="${p.id}" onclick="setPlatform('${p.id}')">
+            <span class="platform-mark ${p.color || 'primary'}">${getPlatformMark(p)}</span>
+            <span class="platform-switch-copy">
+              <strong>${p.name}</strong>
+              <span class="platform-category">${p.category}</span>
+              <span class="platform-meta"><i class="platform-status-dot ${hasData ? 'ready' : ''}"></i>${hasData ? `已分析 ${contentCount} 条内容` : '等待上传数据'} · ${importCount} 次导入</span>
+            </span>
+            <span class="platform-arrow">›</span>
+          </button>
+        `;
+      }).join('');
+      el('platformSwitcherCount').textContent = String(platforms.length);
       el('uploadPlatform').innerHTML = platforms.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
       el('uploadPlatform').value = state.platform;
       el('uploadOperator').value = state.operator;
       el('operatorEcho').textContent = state.operator;
       el('operatorChip').textContent = state.operator;
-      el('sourceText').textContent = state.dataSource === 'supabase' ? 'Supabase 云端数据' : state.dataSource === 'uploaded' ? '已上传测试数据' : '干净底座，等你上传第一份测试数据';
+      el('sourceText').textContent = state.dataSource === 'supabase' ? 'Supabase 云端数据' : state.dataSource === 'uploaded' ? '已上传测试数据，可进入平台查看分析' : '干净底座，等待上传官方后台数据';
       el('dataSourceBadge').textContent = state.dataSource === 'supabase' ? 'GitHub Pages 主页面 · Supabase Connected' : state.dataSource === 'uploaded' ? 'GitHub Pages 主页面 · Uploaded' : 'GitHub Pages 主页面 · Clean Base';
     }
 
@@ -1509,7 +1628,7 @@
       renderPlatformList();
       renderPlatform();
       if (state.dataSource !== 'supabase') {
-        el('sourceText').textContent = state.dataSource === 'uploaded' ? '已上传测试数据' : '干净底座，等你上传第一份测试数据';
+        el('sourceText').textContent = state.dataSource === 'uploaded' ? '已上传测试数据，可进入平台查看分析' : '干净底座，等待上传官方后台数据';
       }
     }
 
@@ -2134,7 +2253,7 @@
       renderAll();
       setView('home');
       el('dataSourceBadge').textContent = getSupabaseModeText();
-      el('sourceText').textContent = supabaseClient ? '干净底座，等你上传第一份测试数据' : '干净底座，等你上传第一份测试数据';
+      el('sourceText').textContent = supabaseClient ? '已连接 Supabase，点击“从云端加载”同步已保存数据' : '干净底座，等待上传官方后台数据';
 
       if (supabaseClient) {
         el('sourceText').textContent = '已连接 Supabase，点“从云端加载”可手动同步';
