@@ -638,8 +638,33 @@
       gap: 12px;
       margin: 4px 0 8px;
     }
-    .trend-summary strong { font-size: 22px; }
-    .trend-summary span { color: var(--muted); font-size: 11.5px; }
+    .trend-range {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 8px 0 2px;
+    }
+    .trend-range button, .trend-range input {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      border-radius: 10px;
+      padding: 7px 9px;
+      font: inherit;
+      font-size: 11px;
+    }
+    .trend-range button { cursor: pointer; }
+    .trend-range button.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .trend-range input { color: var(--text); min-width: 132px; }
+    .trend-range-label { color: var(--muted-2); font-size: 11px; }
+    .overview-content-grid { grid-template-columns: minmax(0, 1.72fr) minmax(240px, .68fr); }
+    .activity-shell { min-width: 0; }
+    .activity-shell .timeline { max-height: 330px; overflow: auto; padding-right: 4px; }
+    .activity-shell .timeline li { padding-bottom: 15px; }
+    .activity-shell .timeline strong { font-size: 12.5px; }
+    .activity-shell .timeline p { font-size: 11.5px; line-height: 1.45; }
+    .activity-summary { color: var(--muted); font-size: 11.5px; margin: 0; }
     .spark {
       width: 100%;
       height: 160px;
@@ -783,7 +808,7 @@
     .form-field textarea { min-height: 84px; }
     .hidden { display: none !important; }
     @media (max-width: 1180px) {
-      .hero, .grid-2, .grid-3, .grid-4, .kpi-grid, .grid-platforms, .grid-home, .two-col, .chart-wrap, .platform-analysis-grid { grid-template-columns: 1fr; }
+      .hero, .grid-2, .grid-3, .grid-4, .kpi-grid, .grid-platforms, .grid-home, .two-col, .chart-wrap, .platform-analysis-grid, .overview-content-grid { grid-template-columns: 1fr; }
       .section-head { align-items: start; flex-direction: column; }
       .section-head p { text-align: left; }
       .topbar { align-items: flex-start; flex-direction: column; }
@@ -958,6 +983,15 @@
                 <div class="metric-switcher" id="platformMetricSwitcher"></div>
               </div>
               <div class="trend-summary"><strong id="platformTrendValue">-</strong><span id="platformTrendHint">暂无真实趋势数据</span></div>
+              <div class="trend-range" id="platformTrendRange">
+                <button type="button" data-range="30" class="active">近30天</button>
+                <button type="button" data-range="all">全部日期</button>
+                <span class="trend-range-label">自定义</span>
+                <input id="trendStartDate" type="date" aria-label="趋势开始日期" />
+                <span class="trend-range-label">至</span>
+                <input id="trendEndDate" type="date" aria-label="趋势结束日期" />
+                <button type="button" id="applyTrendDateBtn">应用</button>
+              </div>
               <div class="chart-box">
                 <svg class="spark" id="platformChart" viewBox="0 0 760 300" preserveAspectRatio="none"></svg>
               </div>
@@ -970,9 +1004,9 @@
         </div>
 
         <div id="tab-overview" class="tab-panel active" style="margin-top:16px;">
-          <div class="grid-2">
+          <div class="grid-2 overview-content-grid">
             <div class="shell">
-              <div class="shell-top"><strong>平台内容明细</strong><span class="chip">Content Table</span></div>
+              <div class="shell-top"><strong>平台内容明细</strong><span class="chip">真实内容记录</span></div>
               <div style="padding:14px; overflow:auto;">
                 <table class="table">
                   <thead>
@@ -982,9 +1016,9 @@
                 </table>
               </div>
             </div>
-            <div class="shell">
-              <div class="shell-top"><strong>本平台最近动作</strong><span class="chip">Activity</span></div>
-              <div style="padding:14px;">
+            <div class="shell activity-shell">
+              <div class="shell-top"><div><strong>本平台最近动作</strong><p class="activity-summary" id="activitySummary">记录上传、识别和同步动作</p></div><span class="chip" id="activityCount">0 条</span></div>
+              <div style="padding:14px 12px;">
                 <ul class="timeline" id="activityTimeline"></ul>
               </div>
             </div>
@@ -1514,15 +1548,51 @@
       return Array.from({ length }, (_, index) => normalizePublishDate(dates[index]) || '');
     }
 
-    function drawChart(platform, metric) {
+    function getTrendRange(platform) {
+      return platform.trendRange || { mode: '30', start: '', end: '' };
+    }
+
+    function buildFilteredTrendData(platform, metric) {
       const series = buildTrendSeries(platform, metric);
+      const dates = buildTrendDates(platform, series.length);
+      const range = getTrendRange(platform);
+      const validDates = dates.filter(Boolean).sort();
+      const latestDate = validDates.length ? validDates[validDates.length - 1] : '';
+      let start = range.start || '';
+      let end = range.end || latestDate;
+      if (range.mode === '30' && latestDate) {
+        const latest = new Date(`${latestDate}T00:00:00`);
+        latest.setDate(latest.getDate() - 29);
+        start = `${latest.getFullYear()}-${String(latest.getMonth() + 1).padStart(2, '0')}-${String(latest.getDate()).padStart(2, '0')}`;
+        end = latestDate;
+      }
+      if (range.mode === 'all') { start = ''; end = ''; }
+      const rows = series.map((value, index) => ({ value, date: dates[index] || '' })).filter(row => {
+        if (!row.date) return range.mode === 'all';
+        if (start && row.date < start) return false;
+        if (end && row.date > end) return false;
+        return true;
+      });
+      return { series: rows.map(row => row.value), dates: rows.map(row => row.date), start, end, mode: range.mode };
+    }
+
+    function renderTrendRangeControls(platform) {
+      const range = getTrendRange(platform);
+      document.querySelectorAll('#platformTrendRange [data-range]').forEach(button => button.classList.toggle('active', button.dataset.range === range.mode));
+      el('trendStartDate').value = range.mode === 'custom' ? range.start || '' : '';
+      el('trendEndDate').value = range.mode === 'custom' ? range.end || '' : '';
+    }
+
+    function drawChart(platform, metric) {
+      const filtered = buildFilteredTrendData(platform, metric);
+      const series = filtered.series;
       if (!series.length) return '<rect x="0" y="0" width="760" height="300" rx="16" fill="#fff"></rect><text x="380" y="145" text-anchor="middle" fill="#8b93a7" font-size="14">暂无该指标数据</text>';
       const validSeries = series.map(value => value === null || value === undefined || Number.isNaN(Number(value)) ? null : Number(value));
       const numericSeries = validSeries.filter(value => value !== null);
       const max = Math.max(1, ...numericSeries);
       const min = Math.min(0, ...numericSeries);
       const range = Math.max(1, max - min);
-      const dates = buildTrendDates(platform, validSeries.length);
+      const dates = filtered.dates;
       const left = 42;
       const right = 724;
       const plotTop = 34;
@@ -1567,6 +1637,23 @@
           renderTrendChart(platform);
         });
       });
+      renderTrendRangeControls(platform);
+      document.querySelectorAll('#platformTrendRange [data-range]').forEach(button => {
+        button.onclick = () => {
+          platform.trendRange = { mode: button.dataset.range, start: '', end: '' };
+          renderTrendChart(platform);
+        };
+      });
+      el('applyTrendDateBtn').onclick = () => {
+        const start = el('trendStartDate').value;
+        const end = el('trendEndDate').value;
+        if (!start || !end || start > end) {
+          el('platformTrendHint').textContent = '请选择有效的开始日期和结束日期';
+          return;
+        }
+        platform.trendRange = { mode: 'custom', start, end };
+        renderTrendChart(platform);
+      };
       if (!metric) {
         el('platformChartCaption').textContent = '上传数据后，系统会根据该平台字段显示可分析指标';
         el('platformTrendValue').textContent = '-';
@@ -1574,12 +1661,13 @@
         el('platformChart').innerHTML = '<rect x="0" y="0" width="760" height="300" rx="16" fill="#fff"></rect><text x="380" y="145" text-anchor="middle" fill="#8b93a7" font-size="14">上传数据后显示真实趋势</text>';
         return;
       }
-      const series = buildTrendSeries(platform, metric).filter(value => value !== null && value !== undefined);
+      const filtered = buildFilteredTrendData(platform, metric);
+      const series = filtered.series.filter(value => value !== null && value !== undefined);
       const latest = series.length ? series[series.length - 1] : null;
       const average = series.length ? series.reduce((sum, value) => sum + (Number(value) || 0), 0) / series.length : null;
       el('platformChartCaption').textContent = metric.description;
       el('platformTrendValue').textContent = formatTrendValue(latest, metric);
-      el('platformTrendHint').textContent = series.length ? `当前值 · 平均 ${formatTrendValue(average, metric)}` : '上传数据后显示真实趋势';
+      el('platformTrendHint').textContent = series.length ? `${filtered.start || '全部日期'} 至 ${filtered.end || '最新日期'} · 当前值 · 平均 ${formatTrendValue(average, metric)}` : '所选日期范围暂无真实数据';
       el('platformChart').innerHTML = drawChart(platform, metric);
     }
 
@@ -1656,7 +1744,9 @@
       el('topicPills').innerHTML = topics.length ? topics.map(t => `<span class="pill green">${t}</span>`).join('') : '<span class="chip">暂无专题</span>';
       el('hotPills').innerHTML = hots.length ? hots.map(t => `<span class="pill amber">${t}</span>`).join('') : '<span class="chip">暂无爆款标签</span>';
       el('suggestionList').innerHTML = suggestions.length ? suggestions.map(s => `<li><strong>${s}</strong><p>后面可变成“建议动作”按钮。</p></li>`).join('') : '<li><strong>暂无建议</strong><p>等数据进来再生成。</p></li>';
-      el('activityTimeline').innerHTML = activities.length ? activities.map(a => `<li><strong>${a[0] || ''}</strong><p>${a[1] || ''}</p></li>`).join('') : '<li><strong>暂无动态</strong><p>先等数据同步。</p></li>';
+      el('activityCount').textContent = `${activities.length} 条`;
+      el('activitySummary').textContent = activities.length ? `最近 ${Math.min(activities.length, 8)} 条上传、识别和同步记录` : '记录上传、识别和同步动作';
+      el('activityTimeline').innerHTML = activities.length ? activities.slice(0, 8).map(a => `<li><strong>${a[0] || ''}</strong><p>${a[1] || ''}</p></li>`).join('') : '<li><strong>暂无动态</strong><p>上传文件或从云端加载后，这里会记录最近动作。</p></li>';
       el('weekReview').textContent = p.week || '暂无周度复盘';
       el('monthReview').textContent = p.month || '暂无月度复盘';
       el('conversionReview').textContent = p.conversion || '暂无业务结果';
