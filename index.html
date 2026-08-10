@@ -587,6 +587,43 @@
       padding: 14px;
     }
     .chart-caption { color: var(--muted); font-size: 12.5px; margin: 0 0 10px; }
+    .trend-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .trend-head h4 { margin-bottom: 4px; }
+    .trend-head .chart-caption { margin: 0; }
+    .metric-switcher {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .metric-switch {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 7px 10px;
+      font: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      transition: .18s ease;
+    }
+    .metric-switch:hover { border-color: rgba(47,111,94,.28); color: var(--primary); }
+    .metric-switch.active { background: var(--primary); border-color: var(--primary); color: #fff; box-shadow: 0 6px 14px rgba(47,111,94,.16); }
+    .trend-summary {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 4px 0 8px;
+    }
+    .trend-summary strong { font-size: 22px; }
+    .trend-summary span { color: var(--muted); font-size: 11.5px; }
     .spark {
       width: 100%;
       height: 160px;
@@ -897,8 +934,14 @@
         <div class="panel" style="margin-top:16px;">
           <div class="grid-2">
             <div class="chart-card">
-              <h4>平台趋势图</h4>
-              <p class="chart-caption">浏览量、点赞率、收藏率、完播率的综合变化。</p>
+              <div class="trend-head">
+                <div>
+                  <h4>平台趋势图</h4>
+                  <p class="chart-caption" id="platformChartCaption">选择指标查看变化</p>
+                </div>
+                <div class="metric-switcher" id="platformMetricSwitcher"></div>
+              </div>
+              <div class="trend-summary"><strong id="platformTrendValue">-</strong><span id="platformTrendHint">暂无趋势数据</span></div>
               <div class="chart-box">
                 <svg class="spark" id="platformChart" viewBox="0 0 520 160" preserveAspectRatio="none"></svg>
               </div>
@@ -1515,27 +1558,117 @@
       renderHomeOverview();
     }
 
-    function drawChart(platform) {
-      const max = Math.max(...platform.spark);
-      const points = platform.spark.map((n, i) => {
-        const x = 20 + i * (480 / (platform.spark.length - 1));
-        const y = 140 - (n / max) * 110;
-        return [x, y];
+    const TREND_METRICS = {
+      wechat_video: [
+        { id: 'views', label: '浏览量', unit: '次', color: '#2f6f5e', description: '按视频号后台播放/浏览字段统计' },
+        { id: 'likesRate', label: '点赞率', unit: '%', color: '#c97b3f', description: '点赞数 ÷ 浏览量' },
+        { id: 'favoritesRate', label: '收藏率', unit: '%', color: '#b06367', description: '收藏数 ÷ 浏览量' },
+        { id: 'completionRate', label: '完播率', unit: '%', color: '#4c8df6', description: '按视频号后台完播率字段统计' }
+      ],
+      wechat_mp: [
+        { id: 'views', label: '阅读量', unit: '次', color: '#c97b3f', description: '按公众号后台阅读量字段统计' },
+        { id: 'likesRate', label: '点赞率', unit: '%', color: '#2f6f5e', description: '点赞数 ÷ 阅读量' },
+        { id: 'favoritesRate', label: '收藏/在看率', unit: '%', color: '#b06367', description: '收藏或在看数 ÷ 阅读量' },
+        { id: 'completionRate', label: '完读率', unit: '%', color: '#4c8df6', description: '有完读率字段时显示；没有则不显示真实曲线' }
+      ],
+      xhs: [
+        { id: 'views', label: '曝光量', unit: '次', color: '#b06367', description: '按小红书后台曝光/浏览字段统计' },
+        { id: 'likesRate', label: '点赞率', unit: '%', color: '#c97b3f', description: '点赞数 ÷ 曝光量' },
+        { id: 'favoritesRate', label: '收藏率', unit: '%', color: '#2f6f5e', description: '收藏数 ÷ 曝光量' }
+      ],
+      douyin: [
+        { id: 'views', label: '播放量', unit: '次', color: '#4c8df6', description: '按抖音后台播放量字段统计' },
+        { id: 'likesRate', label: '点赞率', unit: '%', color: '#2f6f5e', description: '点赞数 ÷ 播放量' },
+        { id: 'favoritesRate', label: '收藏率', unit: '%', color: '#c97b3f', description: '收藏数 ÷ 播放量' },
+        { id: 'completionRate', label: '完播率', unit: '%', color: '#b06367', description: '按抖音后台完播率字段统计' }
+      ]
+    };
+
+    function getTrendMetrics(platform) {
+      const configured = TREND_METRICS[platform.id] || TREND_METRICS.douyin;
+      const uploaded = platform.trendMetrics || {};
+      return configured.filter(metric => {
+        if (metric.id === 'completionRate') return Array.isArray(uploaded.completionRate) && uploaded.completionRate.some(value => value !== null && value !== undefined);
+        if (metric.id !== 'views' && state.dataSource !== 'uploaded') return false;
+        if (metric.id !== 'views') return Array.isArray(uploaded[metric.id]) && uploaded[metric.id].length > 0;
+        return true;
       });
-      const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0]} ${p[1]}`).join(' ');
-      const area = `${d} L 500 148 L 20 148 Z`;
+    }
+
+    function buildTrendSeries(platform, metric) {
+      const uploaded = platform.trendMetrics || {};
+      if (Array.isArray(uploaded[metric.id]) && uploaded[metric.id].length) return uploaded[metric.id];
+      if (metric.id === 'views') return Array.isArray(platform.spark) ? platform.spark : [];
+      const kpi = [...(platform.kpis || []), ...(platform.kpisExtra || [])].find(item => String(item.label || '').includes(metric.label.replace('率', '')));
+      const value = parseNumber(kpi?.value);
+      return value === null ? [] : Array.from({ length: 8 }, () => value);
+    }
+
+    function formatTrendValue(value, metric) {
+      if (value === null || value === undefined || Number.isNaN(value)) return '-';
+      return metric.unit === '%' ? `${Number(value).toFixed(2)}%` : formatCompactNumber(value);
+    }
+
+    function drawChart(platform, metric) {
+      const series = buildTrendSeries(platform, metric);
+      if (!series.length) return '<rect x="0" y="0" width="520" height="160" rx="16" fill="#fff"></rect><text x="260" y="84" text-anchor="middle" fill="#8b93a7" font-size="13">暂无该指标数据</text>';
+      const validSeries = series.map(value => value === null || value === undefined || Number.isNaN(Number(value)) ? null : Number(value));
+      const numericSeries = validSeries.filter(value => value !== null);
+      const max = Math.max(1, ...numericSeries);
+      const min = Math.min(0, ...numericSeries);
+      const range = Math.max(1, max - min);
+      const points = validSeries.map((n, i) => {
+        const x = 20 + i * (480 / Math.max(1, validSeries.length - 1));
+        const y = n === null ? 140 : 140 - ((n - min) / range) * 110;
+        return { x, y, value: n };
+      });
+      const linePoints = points.filter(point => point.value !== null);
+      const d = linePoints.map((point, i) => `${i === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+      const area = d ? `${d} L 500 148 L 20 148 Z` : '';
+      const labels = points.map((point, index) => {
+        if (point.value === null) return '';
+        const label = formatTrendValue(point.value, metric);
+        const labelY = point.y < 28 ? point.y + 20 : point.y - 12;
+        const labelX = Math.max(28, Math.min(492, point.x));
+        return `<g><circle cx="${point.x}" cy="${point.y}" r="4.5" fill="${metric.color}"></circle><text x="${labelX}" y="${labelY}" text-anchor="middle" fill="#334155" font-size="10.5" font-weight="600">${label}</text></g>`;
+      }).join('');
       return `
-        <defs>
-          <linearGradient id="fillPlatform" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stop-color="rgba(47,111,94,0.25)" />
-            <stop offset="100%" stop-color="rgba(47,111,94,0.03)" />
-          </linearGradient>
-        </defs>
+        <defs><linearGradient id="fillPlatformMetric" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="${metric.color}" stop-opacity="0.25" /><stop offset="100%" stop-color="${metric.color}" stop-opacity="0.03" /></linearGradient></defs>
         <rect x="0" y="0" width="520" height="160" rx="16" fill="#fff"></rect>
-        <path d="${area}" fill="url(#fillPlatform)"></path>
-        <path d="${d}" fill="none" stroke="#2f6f5e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
-        ${points.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4" fill="#2f6f5e"></circle>`).join('')}
+        ${area ? `<path d="${area}" fill="url(#fillPlatformMetric)"></path><path d="${d}" fill="none" stroke="${metric.color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>` : ''}
+        ${labels}
       `;
+    }
+
+    function renderTrendChart(platform) {
+      const metrics = getTrendMetrics(platform);
+      const selectedId = platform.selectedTrendMetric && metrics.some(metric => metric.id === platform.selectedTrendMetric)
+        ? platform.selectedTrendMetric
+        : metrics[0]?.id;
+      platform.selectedTrendMetric = selectedId;
+      const metric = metrics.find(item => item.id === selectedId) || metrics[0];
+      const switcher = el('platformMetricSwitcher');
+      switcher.innerHTML = metrics.length ? metrics.map(item => `<button type="button" class="metric-switch ${item.id === selectedId ? 'active' : ''}" data-trend-metric="${item.id}">${item.label}</button>`).join('') : '<span class="chip">暂无可用指标</span>';
+      switcher.querySelectorAll('[data-trend-metric]').forEach(button => {
+        button.addEventListener('click', () => {
+          platform.selectedTrendMetric = button.dataset.trendMetric;
+          renderTrendChart(platform);
+        });
+      });
+      if (!metric) {
+        el('platformChartCaption').textContent = '上传数据后，系统会根据该平台字段显示可分析指标';
+        el('platformTrendValue').textContent = '-';
+        el('platformTrendHint').textContent = '暂无趋势数据';
+        el('platformChart').innerHTML = drawChart(platform, { id: 'views', unit: '次', color: '#2f6f5e' });
+        return;
+      }
+      const series = buildTrendSeries(platform, metric).filter(value => value !== null && value !== undefined);
+      const latest = series.length ? series[series.length - 1] : null;
+      const average = series.length ? series.reduce((sum, value) => sum + (Number(value) || 0), 0) / series.length : null;
+      el('platformChartCaption').textContent = metric.description;
+      el('platformTrendValue').textContent = formatTrendValue(latest, metric);
+      el('platformTrendHint').textContent = series.length ? `当前值 · 平均 ${formatTrendValue(average, metric)}` : '上传数据后显示真实趋势';
+      el('platformChart').innerHTML = drawChart(platform, metric);
     }
 
     function renderPlatform() {
@@ -1557,8 +1690,8 @@
       el('platformKpis').innerHTML = kpis.map(k => `
         <div class="kpi"><div class="label">${k.label || '指标'}</div><div class="value">${k.value || '-'}</div><div class="hint">${k.hint || ''}</div></div>
       `).join('') || '<div class="empty">暂无 KPI 数据</div>';
-      el('platformChart').innerHTML = drawChart({ spark });
-      el('platformNotes').innerHTML = notes.length ? notes.map(n => `<li><strong>${n}</strong><p>这个提示会在后续做成平台说明区。</p></li>`).join('') : '<li><strong>暂无平台说明</strong><p>先把数据挂进来再细化。</p></li>';
+      renderTrendChart(p);
+      el('platformNotes').innerHTML = notes.length ? notes.map(n => `<li><strong>${n}</strong><p>该说明根据当前平台及上传数据生成。</p></li>`).join('') : '<li><strong>暂无平台说明</strong><p>上传数据后自动生成。</p></li>';
       el('contentTable').innerHTML = contents.length ? contents.map(row => `
         <tr><td>${row[0] || ''}</td><td>${row[1] || ''}</td><td>${row[2] || ''}</td><td>${row[3] || ''}</td><td><span class="status ${row[4] === '待优化' ? 'warn' : row[4] === '观察' ? 'warn' : ''}">${row[4] || ''}</span></td></tr>
       `).join('') : '<tr><td colspan="5"><div class="empty">暂无内容数据</div></td></tr>';
@@ -1856,6 +1989,7 @@
       const threshold = profile.hotThreshold || { views: 1000, engagement: 100 };
       const contents = [];
       const rawRows = [];
+      const trendMetrics = { views: [], likesRate: [], favoritesRate: [], completionRate: [] };
       let totalViews = 0;
       let totalLikes = 0;
       let totalFavorites = 0;
@@ -1888,6 +2022,10 @@
         const isHot = /爆|hot|top|优|高/.test(statusRaw.toLowerCase())
           || (views || 0) >= threshold.views
           || engagementTotal >= threshold.engagement;
+        trendMetrics.views.push(views || 0);
+        trendMetrics.likesRate.push(views ? (likes / views * 100) : 0);
+        trendMetrics.favoritesRate.push(views ? (favorites / views * 100) : 0);
+        trendMetrics.completionRate.push(watch !== null ? (watch <= 1 ? watch * 100 : watch) : null);
         if (isHot) hotCount += 1;
         totalViews += views || 0;
         totalLikes += likes || 0;
@@ -1946,6 +2084,7 @@
       return {
         contents,
         rawRows,
+        trendMetrics,
         stats: {
           rowCount,
           totalViews,
@@ -2084,6 +2223,8 @@
         platform.week = summary.week;
         platform.month = summary.month;
         platform.conversion = summary.conversion;
+        platform.trendMetrics = summary.trendMetrics;
+        platform.selectedTrendMetric = 'views';
         platform.lastImport = {
           file: file.name,
           operator,
