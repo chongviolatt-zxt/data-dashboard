@@ -1062,8 +1062,8 @@
             <input id="uploadOperator" />
           </div>
           <div class="form-field">
-            <label>上传文件</label>
-            <input id="uploadFile" type="file" accept=".csv,.xlsx,.xls" />
+            <label>上传文件（可多选）</label>
+            <input id="uploadFile" type="file" accept=".csv,.xlsx,.xls" multiple />
           </div>
           <div class="form-field">
             <label>口径备注</label>
@@ -1726,6 +1726,7 @@
         const bundle = await loadCloudStructure();
         const mergedPlatforms = (bundle.platforms || []).map(platform => {
           const profileLabel = getFieldProfile(platform.id).label;
+          const platformImports = (bundle.imports || []).filter(row => row.platform_code === platform.id);
           const cloudContents = (bundle.contents || []).filter(row => row.platform_code === platform.id);
           const trendViews = cloudContents.map(row => Number(row.views)).map(value => Number.isFinite(value) ? value : null);
           const trendLikesRate = cloudContents.map(row => Number(row.views) > 0 && Number(row.likes) > 0 ? Number(row.likes) / Number(row.views) * 100 : null);
@@ -1758,7 +1759,8 @@
               ].filter(Boolean).join(' / '),
               row.status || (row.is_hot ? '爆款' : '导入')
             ]),
-            imports: (bundle.imports || []).filter(row => row.platform_code === platform.id).map(row => [
+            importHashes: platformImports.map(row => row.file_sha).filter(Boolean),
+            imports: platformImports.map(row => [
               row.imported_at || '',
               row.source_file || '',
               row.updated_by || '未知',
@@ -2154,6 +2156,33 @@
       return [time, '上传', file.name, operator, parts.join(' · '), result, stats.profileLabel, `${stats.rowCount} 条 / 爆款 ${stats.hotCount}`];
     }
 
+    function contentDedupKey(row, platformId) {
+      return `${platformId}::${normalizeText(row.title || row[0]).toLowerCase()}::${normalizePublishDate(row.publish_date || row[1]) || ''}`;
+    }
+
+    function mergeSummaryIntoPlatform(platform, summary, fileName) {
+      const existing = Array.isArray(platform.contents) ? platform.contents : [];
+      const incoming = Array.isArray(summary.contents) ? summary.contents : [];
+      const byKey = new Map(existing.map(row => [contentDedupKey(row, platform.id), row]));
+      incoming.forEach(row => byKey.set(contentDedupKey(row, platform.id), row));
+      platform.contents = Array.from(byKey.values());
+      platform.imports = [summary.importRow, ...(Array.isArray(platform.imports) ? platform.imports : [])].filter(Boolean).slice(0, 100);
+      platform.audits = [summary.auditRow, ...(Array.isArray(platform.audits) ? platform.audits : [])].filter(Boolean).slice(0, 100);
+      platform.activities = (summary.activityLog || []).concat(Array.isArray(platform.activities) ? platform.activities : []).slice(0, 100);
+      platform.kpisExtra = summary.kpisExtra;
+      platform.notes = summary.notes;
+      platform.topics = summary.topics;
+      platform.hots = summary.hots;
+      platform.suggestions = summary.suggestions;
+      platform.week = summary.week;
+      platform.month = summary.month;
+      platform.conversion = summary.conversion;
+      const existingTrend = platform.trendMetrics || {};
+      const incomingTrend = summary.trendMetrics || {};
+      platform.trendMetrics = Object.fromEntries(['views', 'likesRate', 'favoritesRate', 'completionRate'].map(key => [key, (Array.isArray(existingTrend[key]) ? existingTrend[key] : []).concat(Array.isArray(incomingTrend[key]) ? incomingTrend[key] : [])]));
+      platform.trendDates = (Array.isArray(platform.trendDates) ? platform.trendDates : []).concat(Array.isArray(summary.trendDates) ? summary.trendDates : []);
+    }
+
     async function handleUpload() {
       const fileEl = el('uploadFile');
       const platformId = el('uploadPlatform').value;
@@ -2161,119 +2190,96 @@
       const note = (el('uploadNote').value || '').trim();
       const desc = (el('uploadDesc').value || '').trim();
       const hint = el('uploadHint');
-      const file = fileEl && fileEl.files && fileEl.files[0];
-      if (!file) {
-        hint.textContent = '先选一个 csv / xlsx / xls 文件，我们再帮你入库。';
+      const files = fileEl && fileEl.files ? Array.from(fileEl.files) : [];
+      if (!files.length) {
+        hint.textContent = '先选一个或多个 csv / xlsx / xls 文件，我们再帮你入库。';
         return;
       }
       const platform = platforms.find(p => p.id === platformId) || platforms[0];
       try {
-        hint.textContent = `正在读取 ${file.name}，稍等一下...`;
-        const rows = await readUploadRows(file);
-        const summary = summarizeRows(rows, file.name, platform.id, operator);
-        const contents = summary.contents;
-        const now = new Date().toISOString();
-        const importedAt = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-        const noteText = note || desc || '';
-        const fileHash = await hashUploadFile(file);
-
-        const importRow = [
-          importedAt,
-          file.name,
-          operator,
-          noteText,
-          '成功',
-          summary.stats.profileLabel,
-          `${summary.stats.rowCount} 条 / 爆款 ${summary.stats.hotCount}`
-        ];
-        const auditRow = buildLogRow(importedAt, file, operator, summary, noteText, '成功');
-        const activityLog = [
-          [`上传 ${file.name}`, `${operator} · ${importedAt}`],
-          [`按${summary.stats.profileLabel}字段口径解析`, `${summary.stats.rowCount} 条内容 · ${summary.stats.hotCount} 条爆款`],
-          [`互动率 ${summary.stats.engagementRate.toFixed(2)}%`, `总浏览 ${formatMetricNumber(summary.stats.totalViews)}`]
-        ];
-
-        platform.contents = contents;
-        platform.imports = [importRow, ...(Array.isArray(platform.imports) ? platform.imports : [])].slice(0, 20);
-        platform.audits = [auditRow, ...(Array.isArray(platform.audits) ? platform.audits : [])].slice(0, 20);
-        platform.activities = activityLog.concat(Array.isArray(platform.activities) ? platform.activities : []).slice(0, 20);
-        platform.kpisExtra = summary.kpisExtra;
-        platform.notes = summary.notes;
-        platform.topics = summary.topics;
-        platform.hots = summary.hots;
-        platform.suggestions = summary.suggestions;
-        platform.week = summary.week;
-        platform.month = summary.month;
-        platform.conversion = summary.conversion;
-        platform.trendMetrics = summary.trendMetrics;
-        platform.trendDates = summary.trendDates;
-        platform.selectedTrendMetric = 'views';
+        const summaries = [];
+        const skipped = [];
+        for (const file of files) {
+          hint.textContent = `正在读取 ${file.name}（${summaries.length + 1}/${files.length}）...`;
+          const fileHash = await hashUploadFile(file);
+          const knownHashes = Array.isArray(platform.importHashes) ? platform.importHashes : [];
+          if (fileHash && knownHashes.includes(fileHash)) {
+            skipped.push(`${file.name}（重复文件）`);
+            continue;
+          }
+          const rows = await readUploadRows(file);
+          const summary = summarizeRows(rows, file.name, platform.id, operator);
+          const importedAt = new Date().toLocaleString('zh-CN', { hour12: false });
+          const noteText = note || desc || '';
+          summary.importRow = [importedAt, file.name, operator, noteText, '成功', summary.stats.profileLabel, `${summary.stats.rowCount} 条 / 爆款 ${summary.stats.hotCount}`];
+          summary.auditRow = buildLogRow(importedAt, file, operator, summary, noteText, '成功');
+          summary.activityLog = [
+            [`上传 ${file.name}`, `${operator} · ${importedAt}`],
+            [`按${summary.stats.profileLabel}字段口径解析`, `${summary.stats.rowCount} 条内容 · ${summary.stats.hotCount} 条爆款`],
+            [`互动率 ${summary.stats.engagementRate.toFixed(2)}%`, `总浏览 ${formatMetricNumber(summary.stats.totalViews)}`]
+          ];
+          summary.file = file;
+          summary.fileHash = fileHash;
+          summaries.push(summary);
+          platform.importHashes = [fileHash, ...knownHashes].filter(Boolean);
+        }
+        if (!summaries.length) {
+          hint.textContent = skipped.length ? `未新增数据：${skipped.join('、')}` : '没有识别到可导入文件。';
+          return;
+        }
+        const merged = summaries.reduce((acc, summary) => ({
+          contents: acc.contents.concat(summary.contents),
+          trendMetrics: Object.fromEntries(Object.keys(acc.trendMetrics).map(key => [key, (acc.trendMetrics[key] || []).concat(summary.trendMetrics[key] || [])])),
+          trendDates: acc.trendDates.concat(summary.trendDates),
+          stats: {
+            rowCount: acc.stats.rowCount + summary.stats.rowCount,
+            totalViews: acc.stats.totalViews + summary.stats.totalViews,
+            totalLikes: acc.stats.totalLikes + summary.stats.totalLikes,
+            totalFavorites: acc.stats.totalFavorites + summary.stats.totalFavorites,
+            totalComments: acc.stats.totalComments + summary.stats.totalComments,
+            totalShares: acc.stats.totalShares + summary.stats.totalShares,
+            hotCount: acc.stats.hotCount + summary.stats.hotCount,
+            engagementTotal: acc.stats.engagementTotal + summary.stats.engagementTotal,
+            engagementRate: 0,
+            profileLabel: summary.stats.profileLabel,
+            detectedHeaders: Array.from(new Set(acc.stats.detectedHeaders.concat(summary.stats.detectedHeaders)))
+          }
+        }), { contents: [], trendMetrics: { views: [], likesRate: [], favoritesRate: [], completionRate: [] }, trendDates: [], stats: { rowCount: 0, totalViews: 0, totalLikes: 0, totalFavorites: 0, totalComments: 0, totalShares: 0, hotCount: 0, engagementTotal: 0, engagementRate: 0, profileLabel: '', detectedHeaders: [] } });
+        merged.stats.engagementRate = merged.stats.totalViews ? merged.stats.engagementTotal / merged.stats.totalViews * 100 : 0;
+        const latest = summaries[summaries.length - 1];
+        const combined = { ...latest, contents: merged.contents, trendMetrics: merged.trendMetrics, trendDates: merged.trendDates, stats: merged.stats };
+        mergeSummaryIntoPlatform(platform, combined);
         state.platform = platform.id;
         state.operator = operator;
         state.dataSource = 'uploaded';
         renderAll();
 
         if (supabaseClient) {
-          await Promise.all([
-            supabaseClient.from(TABLES.contents).delete().eq('platform_code', platform.id),
-            supabaseClient.from(TABLES.importJobs).delete().eq('platform_code', platform.id),
-            supabaseClient.from(TABLES.auditLogs).delete().eq('platform_code', platform.id)
-          ]);
-          if (contents.length) {
-            const contentRows = summary.rawRows.map((row, index) => ({
-              platform_code: platform.id,
-              title: row.title,
-              publish_date: formatPublishDate(row.publish_date),
-              views: row.views,
-              likes: row.likes,
-              favorites: row.favorites,
-              comments: row.comments,
-              shares: row.shares,
-              watch_time: row.watch_time,
-              engagement_text: row.engagement_text,
-              status: row.status || (row.is_hot ? '爆款' : '导入'),
-              is_hot: row.is_hot,
-              sort_order: index + 1,
-              source_file: file.name,
-              updated_at: now,
-              updated_by: operator
-            }));
-            const importRows = [{
-              platform_code: platform.id,
-              imported_at: importedAt,
-              source_file: file.name,
-              file_size: file.size || null,
-              file_sha: fileHash,
-              row_count: summary.stats.rowCount,
-              detected_headers: summary.stats.detectedHeaders.join(' | ').slice(0, 480),
-              total_views: summary.stats.totalViews,
-              total_engagement: summary.stats.engagementTotal,
-              hot_count: summary.stats.hotCount,
-              engagement_rate: Number(summary.stats.engagementRate.toFixed(2)),
-              updated_by: operator,
-              note: noteText,
-              result: '成功',
-              created_at: now
-            }];
-            const auditRows = [{
-              platform_code: platform.id,
-              action_at: importedAt,
-              action_type: '上传',
-              action_target: file.name,
-              source_file: file.name,
-              result: '成功',
-              updated_by: operator,
-              note: `${summary.stats.profileLabel}字段口径 · ${summary.stats.rowCount} 条 · ${summary.stats.hotCount} 条爆款 · 操作人 ${operator} · ${noteText}`,
-              created_at: now
-            }];
-            await Promise.all([
-              supabaseClient.from(TABLES.contents).insert(contentRows),
-              supabaseClient.from(TABLES.importJobs).insert(importRows),
-              supabaseClient.from(TABLES.auditLogs).insert(auditRows)
-            ]);
+          const { data: oldImports, error: oldImportError } = await supabaseClient.from(TABLES.importJobs).select('file_sha').eq('platform_code', platform.id);
+          if (oldImportError) throw oldImportError;
+          const { data: oldContents, error: oldContentError } = await supabaseClient.from(TABLES.contents).select('title,publish_date').eq('platform_code', platform.id);
+          if (oldContentError) throw oldContentError;
+          const cloudHashes = new Set((oldImports || []).map(row => row.file_sha).filter(Boolean));
+          const cloudContentKeys = new Set((oldContents || []).map(row => contentDedupKey(row, platform.id)));
+          for (const summary of summaries) {
+            if (summary.fileHash && cloudHashes.has(summary.fileHash)) continue;
+            const contentRows = summary.rawRows.filter(row => {
+              const key = contentDedupKey(row, platform.id);
+              if (cloudContentKeys.has(key)) return false;
+              cloudContentKeys.add(key);
+              return true;
+            }).map((row, index) => ({ platform_code: platform.id, title: row.title, publish_date: formatPublishDate(row.publish_date), views: row.views, likes: row.likes, favorites: row.favorites, comments: row.comments, shares: row.shares, watch_time: row.watch_time, engagement_text: row.engagement_text, status: row.status || (row.is_hot ? '爆款' : '导入'), is_hot: row.is_hot, sort_order: index + 1, source_file: summary.file.name, updated_at: new Date().toISOString(), updated_by: operator }));
+            const importRow = { platform_code: platform.id, imported_at: summary.importRow[0], source_file: summary.file.name, file_size: summary.file.size || null, file_sha: summary.fileHash, row_count: summary.stats.rowCount, detected_headers: summary.stats.detectedHeaders.join(' | ').slice(0, 480), total_views: summary.stats.totalViews, total_engagement: summary.stats.engagementTotal, hot_count: summary.stats.hotCount, engagement_rate: Number(summary.stats.engagementRate.toFixed(2)), updated_by: operator, note: summary.importRow[3], result: '成功', created_at: new Date().toISOString() };
+            const auditRow = { platform_code: platform.id, action_at: summary.auditRow[0], action_type: '上传', action_target: summary.file.name, source_file: summary.file.name, result: '成功', updated_by: operator, note: summary.auditRow[4], created_at: new Date().toISOString() };
+            const writes = [supabaseClient.from(TABLES.importJobs).insert(importRow), supabaseClient.from(TABLES.auditLogs).insert(auditRow)];
+            if (contentRows.length) writes.unshift(supabaseClient.from(TABLES.contents).insert(contentRows));
+            const results = await Promise.all(writes);
+            const failed = results.find(result => result.error);
+            if (failed) throw failed.error;
+            cloudHashes.add(summary.fileHash);
           }
         }
-        hint.textContent = `已接收 ${file.name}（${summary.stats.profileLabel}字段口径，${contents.length} 条内容 / ${summary.stats.hotCount} 条爆款，操作人 ${operator}），已写入${supabaseClient ? '云端和' : ''}当前页面。`;
+        hint.textContent = `已新增 ${summaries.length} 个文件，跳过 ${skipped.length} 个重复文件；历史数据已保留。`;
         closeModal('uploadModal');
       } catch (err) {
         console.error(err);
@@ -2300,25 +2306,13 @@
 
     async function saveCurrentToCloud() {
       if (!supabaseClient) throw new Error('Supabase 客户端未初始化');
-      const payload = exportCurrentStructure();
-      const tables = [
-        [TABLES.platforms, payload.platforms],
-        [TABLES.contents, payload.contents],
-        [TABLES.importJobs, payload.import_jobs],
-        [TABLES.auditLogs, payload.audit_logs]
-      ];
-      for (const [table, rows] of tables) {
-        const { error: delErr } = await supabaseClient.from(table).delete().gte('id', 0);
-        if (delErr) throw delErr;
-        if (rows.length) {
-          const { error: insertErr } = await supabaseClient.from(table).insert(rows);
-          if (insertErr) throw insertErr;
-        }
-      }
+      const platformRows = platforms.map(toDbPlatformRow);
+      const { error } = await supabaseClient.from(TABLES.platforms).upsert(platformRows, { onConflict: 'code' });
+      if (error) throw error;
       state.dataSource = 'supabase';
       renderAll();
       el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · Supabase Connected';
-      el('sourceText').textContent = '已保存到 Supabase 云端';
+      el('sourceText').textContent = '平台配置已保存；历史内容、导入批次和审计日志均已保留';
     }
 
     document.addEventListener('click', (e) => {
