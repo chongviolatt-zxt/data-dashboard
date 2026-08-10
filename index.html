@@ -1586,24 +1586,171 @@
       }
     }
 
+    const ANALYSIS_KEYWORDS = {
+      title: ['标题', 'title', '名称', '视频标题', '文章标题', '笔记标题', '内容标题', '作品标题'],
+      date: ['日期', '时间', 'publish', '发布时间', '发布日期', 'create time', '创建时间'],
+      views: ['浏览', '阅读', '曝光', '播放', '观看', 'view', 'pv', '访问'],
+      likes: ['点赞', '喜欢', 'like', '赞'],
+      favorites: ['收藏', 'favorite', 'star', 'bookmark'],
+      comments: ['评论', 'comment'],
+      shares: ['转发', '分享', 'share'],
+      status: ['状态', '结果', 'status', '是否爆款', '热度'],
+      engagement: ['互动', '互动量', '互动数'],
+      fans: ['粉丝', '关注', 'followers', 'fans'],
+      watchTime: ['完播', '完播率', '观看时长', '停留']
+    };
+
     function detectHeaderRow(rows) {
       if (!rows.length) return false;
       const joined = rows[0].map(cell => String(cell || '').trim()).join(' ').toLowerCase();
-      return ['标题', 'title', '名称', '日期', '时间', '浏览', '阅读', '曝光', '点赞', '评论', '收藏'].some(word => joined.includes(word));
+      return Object.values(ANALYSIS_KEYWORDS).flat().some(word => joined.includes(String(word).toLowerCase()));
+    }
+
+    function normalizeText(value) {
+      return String(value ?? '').replace(/\s+/g, ' ').trim();
+    }
+
+    function parseNumber(value) {
+      const text = normalizeText(value).replace(/,/g, '');
+      if (!text) return null;
+      const percent = text.match(/(-?\d+(?:\.\d+)?)\s*%/);
+      if (percent) return Number(percent[1]) / 100;
+      const num = text.match(/-?\d+(?:\.\d+)?/);
+      return num ? Number(num[0]) : null;
+    }
+
+    function matchHeaderIndex(headers, keywords) {
+      const lower = headers.map(h => normalizeText(h).toLowerCase());
+      for (const key of keywords) {
+        const idx = lower.findIndex(cell => cell.includes(String(key).toLowerCase()));
+        if (idx >= 0) return idx;
+      }
+      return -1;
+    }
+
+    function formatMetricNumber(value) {
+      if (value === null || value === undefined || Number.isNaN(value)) return '-';
+      if (Math.abs(value) >= 10000) return `${(value / 10000).toFixed(1)}w`;
+      if (Number.isInteger(value)) return String(value);
+      return String(Number(value.toFixed(2)));
+    }
+
+    function summarizeRows(rows, fileName) {
+      const cleaned = rows.filter(row => Array.isArray(row) && row.some(cell => String(cell ?? '').trim() !== ''));
+      const hasHeader = detectHeaderRow(cleaned);
+      const headers = hasHeader ? cleaned[0].map(normalizeText) : [];
+      const dataRows = hasHeader ? cleaned.slice(1) : cleaned;
+      const titleIdx = hasHeader ? matchHeaderIndex(headers, ANALYSIS_KEYWORDS.title) : 0;
+      const dateIdx = hasHeader ? matchHeaderIndex(headers, ANALYSIS_KEYWORDS.date) : 1;
+      const viewsIdx = hasHeader ? matchHeaderIndex(headers, ANALYSIS_KEYWORDS.views) : 2;
+      const likesIdx = hasHeader ? matchHeaderIndex(headers, ANALYSIS_KEYWORDS.likes) : 3;
+      const favIdx = hasHeader ? matchHeaderIndex(headers, ANALYSIS_KEYWORDS.favorites) : 4;
+      const commentsIdx = hasHeader ? matchHeaderIndex(headers, ANALYSIS_KEYWORDS.comments) : 5;
+      const sharesIdx = hasHeader ? matchHeaderIndex(headers, ANALYSIS_KEYWORDS.shares) : 6;
+      const statusIdx = hasHeader ? matchHeaderIndex(headers, ANALYSIS_KEYWORDS.status) : -1;
+      const watchIdx = hasHeader ? matchHeaderIndex(headers, ANALYSIS_KEYWORDS.watchTime) : -1;
+
+      const contents = [];
+      let totalViews = 0;
+      let totalLikes = 0;
+      let totalFavorites = 0;
+      let totalComments = 0;
+      let totalShares = 0;
+      let hotCount = 0;
+      const topics = new Set();
+      const hots = new Set();
+      const suggestions = [];
+      const activity = [];
+
+      dataRows.slice(0, 200).forEach((row, index) => {
+        const cells = row.map(normalizeText);
+        const title = cells[titleIdx] || cells[0] || `${fileName} 第 ${index + 1} 行`;
+        const publishDate = cells[dateIdx] || cells.find(cell => /\d{4}-\d{1,2}-\d{1,2}/.test(cell)) || '';
+        const views = parseNumber(cells[viewsIdx]) ?? parseNumber(cells.find(cell => /\d/.test(cell) && /[\d,]+/.test(cell))) ?? 0;
+        const likes = parseNumber(cells[likesIdx]) ?? 0;
+        const favorites = parseNumber(cells[favIdx]) ?? 0;
+        const comments = parseNumber(cells[commentsIdx]) ?? 0;
+        const shares = parseNumber(cells[sharesIdx]) ?? 0;
+        const statusRaw = cells[statusIdx] || cells[cells.length - 1] || '';
+        const watch = parseNumber(cells[watchIdx]) ?? null;
+        const engagementText = [
+          likes ? `${formatMetricNumber(likes)}赞` : '',
+          favorites ? `${formatMetricNumber(favorites)}藏` : '',
+          comments ? `${formatMetricNumber(comments)}评` : '',
+          shares ? `${formatMetricNumber(shares)}转` : ''
+        ].filter(Boolean).join(' / ');
+        const isHot = /爆|hot|top|优|高/.test(statusRaw.toLowerCase()) || views >= 1000 || (favorites + likes + comments) >= 100;
+        if (isHot) hotCount += 1;
+        totalViews += views || 0;
+        totalLikes += likes || 0;
+        totalFavorites += favorites || 0;
+        totalComments += comments || 0;
+        totalShares += shares || 0;
+        if (title) topics.add(title.slice(0, 8));
+        if (isHot) hots.add(title);
+        contents.push([
+          title,
+          publishDate,
+          formatMetricNumber(views),
+          engagementText || (watch !== null ? `完播/停留 ${formatMetricNumber(watch)}` : ''),
+          isHot ? '爆款' : (statusRaw || '导入')
+        ]);
+      });
+
+      const rowCount = contents.length;
+      const avgViews = rowCount ? totalViews / rowCount : 0;
+      const engagementRate = totalViews ? ((totalLikes + totalFavorites + totalComments + totalShares) / totalViews * 100) : 0;
+      const topOne = contents[0]?.[0] || fileName;
+      const topTwo = contents[1]?.[0] || '';
+      suggestions.push(
+        `这份文件共 ${rowCount} 条内容，平均浏览量约 ${formatMetricNumber(avgViews)}。`,
+        `互动总量约 ${formatMetricNumber(totalLikes + totalFavorites + totalComments + totalShares)}，粗略互动率约 ${engagementRate.toFixed(2)}%。`,
+        hotCount ? `其中 ${hotCount} 条可先按爆款看，优先复盘标题、封面、开头和结尾。` : '这份文件暂时没识别出明显爆款，建议先看浏览最高的前几条。'
+      );
+      activity.push([`识别到 ${rowCount} 条内容`, `${fileName} · 自动分析`]);
+      if (topOne) activity.push([`首条内容：${topOne}`, topTwo ? `第二条：${topTwo}` : '自动分析']);
+      if (headers.length) {
+        suggestions.push(`已识别表头：${headers.slice(0, 6).join(' / ')}${headers.length > 6 ? '…' : ''}`);
+      }
+
+      const kpisExtra = [
+        { label: '内容条数', value: String(rowCount), hint: '自动分析' },
+        { label: '总浏览量', value: formatMetricNumber(totalViews), hint: '自动分析' },
+        { label: '总互动量', value: formatMetricNumber(totalLikes + totalFavorites + totalComments + totalShares), hint: '点赞 / 收藏 / 评论 / 转发' },
+        { label: '爆款数', value: String(hotCount), hint: '自动分析' }
+      ];
+
+      return {
+        contents,
+        stats: {
+          rowCount,
+          totalViews,
+          totalLikes,
+          totalFavorites,
+          totalComments,
+          totalShares,
+          hotCount,
+          avgViews,
+          engagementRate
+        },
+        kpisExtra,
+        notes: [
+          `这份文件已自动读到 ${rowCount} 条内容。`,
+          `总浏览量 ${formatMetricNumber(totalViews)}，平均每条 ${formatMetricNumber(avgViews)}。`,
+          hotCount ? `先抓 ${hotCount} 条爆款复盘，别一上来全看。` : '暂时没抓到明显爆款，先看标题和浏览最高的几条。'
+        ],
+        topics: Array.from(topics).slice(0, 6),
+        hots: Array.from(hots).slice(0, 6),
+        suggestions,
+        activities: activity,
+        week: `本次上传共 ${rowCount} 条，浏览量 ${formatMetricNumber(totalViews)}，先从高浏览内容看起。`,
+        month: `当前文件粗略互动率 ${engagementRate.toFixed(2)}%，爆款数 ${hotCount}。`,
+        conversion: `文件里累计互动量 ${formatMetricNumber(totalLikes + totalFavorites + totalComments + totalShares)}，可以继续接转化动作。`
+      };
     }
 
     function rowsToContentPayload(rows, fileName, platformId, operator) {
-      const cleaned = rows.filter(row => Array.isArray(row) && row.some(cell => String(cell ?? '').trim() !== ''));
-      const dataRows = detectHeaderRow(cleaned) ? cleaned.slice(1) : cleaned;
-      return dataRows.slice(0, 200).map((row, index) => {
-        const cells = row.map(cell => String(cell ?? '').trim());
-        const title = cells[0] || `${fileName} 第 ${index + 1} 行`;
-        const publishDate = cells.find((cell, i) => i > 0 && /\d{4}-\d{1,2}-\d{1,2}/.test(cell)) || cells[1] || '';
-        const viewsCell = cells.find((cell) => /\d/.test(cell) && /[\d,]+/.test(cell)) || cells[2] || '';
-        const engagementText = [cells[3], cells[4]].filter(Boolean).join(' / ') || cells.slice(3, 5).filter(Boolean).join(' / ') || '';
-        const status = cells[cells.length - 1] || '导入';
-        return [title, publishDate, viewsCell, engagementText, status];
-      });
+      return summarizeRows(rows, fileName, platformId, operator).contents;
     }
 
     async function readUploadRows(file) {
@@ -1636,15 +1783,32 @@
       try {
         hint.textContent = `正在读取 ${file.name}，稍等一下...`;
         const rows = await readUploadRows(file);
-        const contents = rowsToContentPayload(rows, file.name, platform.id, operator);
+        const summary = summarizeRows(rows, file.name, platform.id, operator);
+        const contents = summary.contents;
         const now = new Date().toISOString();
-        const importRow = [new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }), file.name, operator, note || desc || '手动上传测试', '成功'];
-        const auditRow = [new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }), '上传', file.name, operator, desc || note || '手动上传测试'];
+        const importedAt = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        const importRow = [importedAt, file.name, operator, note || desc || '手动上传测试', '成功'];
+        const auditRow = [importedAt, '上传', file.name, operator, desc || note || '手动上传测试'];
 
         platform.contents = contents;
         platform.imports = [importRow];
         platform.audits = [auditRow, ...(Array.isArray(platform.audits) ? platform.audits : [])].slice(0, 20);
-        platform.activities = [[`上传了 ${file.name}`, `${operator} · ${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`]];
+        platform.activities = summary.activities;
+        platform.kpisExtra = summary.kpisExtra;
+        platform.notes = summary.notes;
+        platform.topics = summary.topics;
+        platform.hots = summary.hots;
+        platform.suggestions = summary.suggestions;
+        platform.week = summary.week;
+        platform.month = summary.month;
+        platform.conversion = summary.conversion;
+        platform.spark = summary.stats.rowCount
+          ? Array.from({ length: Math.min(8, summary.stats.rowCount) }, (_, i) => {
+              const base = summary.stats.totalViews || 1;
+              const ratio = Math.max(0.3, Math.min(1.8, (summary.stats.avgViews || 0) / (base / summary.stats.rowCount || 1)));
+              return Math.round((summary.stats.avgViews || 60) * (0.75 + i * 0.06) * ratio / 10) * 10;
+            })
+          : platform.spark;
         state.platform = platform.id;
         state.operator = operator;
         state.dataSource = 'uploaded';
@@ -1693,7 +1857,7 @@
             ]);
           }
         }
-        hint.textContent = `已接收 ${file.name}，${contents.length} 行测试数据已写入${supabaseClient ? '云端和' : ''}当前页面。`;
+        hint.textContent = `已接收 ${file.name}，自动分析出 ${contents.length} 条内容、${summary.stats.hotCount} 条爆款，已写入${supabaseClient ? '云端和' : ''}当前页面。`;
         closeModal('uploadModal');
       } catch (err) {
         console.error(err);
