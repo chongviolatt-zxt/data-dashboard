@@ -808,7 +808,7 @@
                 <div style="padding:14px;">
                   <table class="table">
                     <thead>
-                      <tr><th>时间</th><th>平台</th><th>文件</th><th>操作者</th><th>结果</th></tr>
+                      <tr><th>时间</th><th>平台</th><th>文件</th><th>字段口径</th><th>条数 / 爆款</th><th>操作者</th><th>结果</th></tr>
                     </thead>
                     <tbody id="homeImportTable"></tbody>
                   </table>
@@ -905,7 +905,7 @@
               <div class="shell-top"><strong>导入记录</strong><span class="chip">Import Logs</span></div>
               <div style="padding:14px; overflow:auto;">
                 <table class="table">
-                  <thead><tr><th>时间</th><th>文件</th><th>操作者</th><th>备注</th><th>结果</th></tr></thead>
+                  <thead><tr><th>时间</th><th>文件</th><th>字段口径</th><th>条数 / 爆款</th><th>操作者</th><th>备注</th><th>结果</th></tr></thead>
                   <tbody id="importLogTable"></tbody>
                 </table>
               </div>
@@ -914,7 +914,7 @@
               <div class="shell-top"><strong>删除 / 修改记录</strong><span class="chip">Audit Logs</span></div>
               <div style="padding:14px; overflow:auto;">
                 <table class="table">
-                  <thead><tr><th>时间</th><th>动作</th><th>对象</th><th>操作者</th><th>说明</th></tr></thead>
+                  <thead><tr><th>时间</th><th>动作</th><th>对象</th><th>字段口径</th><th>操作者</th><th>说明</th></tr></thead>
                   <tbody id="auditLogTable"></tbody>
                 </table>
               </div>
@@ -1401,9 +1401,16 @@
       cards.querySelectorAll('[data-platform]').forEach(btn => {
         btn.addEventListener('click', () => setPlatform(btn.dataset.platform));
       });
-      el('homeImportTable').innerHTML = homeImportRows.length ? homeImportRows.map(r => `
-        <tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td><span class="status">${r[4]}</span></td></tr>
-      `).join('') : '<tr><td colspan="5"><div class="empty">暂无默认导入记录，等你上传第一份数据</div></td></tr>';
+      const aggregatedHome = [];
+      platforms.forEach(p => {
+        (Array.isArray(p.imports) ? p.imports : []).forEach(row => {
+          aggregatedHome.push([row[0] || '-', p.name, row[1] || '-', row[5] || '-', row[6] || '-', row[2] || '-', row[4] || '成功']);
+        });
+      });
+      aggregatedHome.sort((a, b) => String(b[0]).localeCompare(String(a[0])));
+      el('homeImportTable').innerHTML = aggregatedHome.length ? aggregatedHome.slice(0, 12).map(r => `
+        <tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td><td><span class="status">${r[6]}</span></td></tr>
+      `).join('') : '<tr><td colspan="7"><div class="empty">暂无导入记录，等你上传第一份数据</div></td></tr>';
     }
 
     function drawChart(platform) {
@@ -1453,12 +1460,13 @@
       el('contentTable').innerHTML = contents.length ? contents.map(row => `
         <tr><td>${row[0] || ''}</td><td>${row[1] || ''}</td><td>${row[2] || ''}</td><td>${row[3] || ''}</td><td><span class="status ${row[4] === '待优化' ? 'warn' : row[4] === '观察' ? 'warn' : ''}">${row[4] || ''}</span></td></tr>
       `).join('') : '<tr><td colspan="5"><div class="empty">暂无内容数据</div></td></tr>';
-      el('importLogTable').innerHTML = imports.length ? imports.map(row => `
-        <tr><td>${row[0] || ''}</td><td>${row[1] || ''}</td><td>${row[2] || ''}</td><td>${row[3] || ''}</td><td><span class="status">${row[4] || ''}</span></td></tr>
-      `).join('') : '<tr><td colspan="5"><div class="empty">暂无导入记录</div></td></tr>';
+      el('importLogTable').innerHTML = imports.length ? imports.map(row => {
+        const note = row[3] || '';
+        return `<tr><td>${row[0] || ''}</td><td>${row[1] || ''}</td><td>${row[5] || '-'}</td><td>${row[6] || '-'}</td><td>${row[2] || ''}</td><td>${note}</td><td><span class="status">${row[4] || ''}</span></td></tr>`;
+      }).join('') : '<tr><td colspan="7"><div class="empty">暂无导入记录</div></td></tr>';
       el('auditLogTable').innerHTML = audits.length ? audits.map(row => `
-        <tr><td>${row[0] || ''}</td><td>${row[1] || ''}</td><td>${row[2] || ''}</td><td>${row[3] || ''}</td><td>${row[4] || ''}</td></tr>
-      `).join('') : '<tr><td colspan="5"><div class="empty">暂无审计记录</div></td></tr>';
+        <tr><td>${row[0] || ''}</td><td>${row[1] || ''}</td><td>${row[2] || ''}</td><td>${row[5] || '-'}</td><td>${row[3] || ''}</td><td>${row[4] || ''}</td></tr>
+      `).join('') : '<tr><td colspan="6"><div class="empty">暂无审计记录</div></td></tr>';
       el('topicPills').innerHTML = topics.length ? topics.map(t => `<span class="pill green">${t}</span>`).join('') : '<span class="chip">暂无专题</span>';
       el('hotPills').innerHTML = hots.length ? hots.map(t => `<span class="pill amber">${t}</span>`).join('') : '<span class="chip">暂无爆款标签</span>';
       el('suggestionList').innerHTML = suggestions.length ? suggestions.map(s => `<li><strong>${s}</strong><p>后面可变成“建议动作”按钮。</p></li>`).join('') : '<li><strong>暂无建议</strong><p>等数据进来再生成。</p></li>';
@@ -1545,30 +1553,36 @@
         state.dataSource = 'supabase';
         el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · 正在读取云端';
         const bundle = await loadCloudStructure();
-        const mergedPlatforms = (bundle.platforms || []).map(platform => ({
-          ...platform,
-          contents: (bundle.contents || []).filter(row => row.platform_code === platform.id).map(row => [
-            row.title,
-            row.publish_date || '',
-            String(row.views ?? 0),
-            row.engagement_text || `${row.likes || 0} / ${row.comments || 0}`,
-            row.status || '导入'
-          ]),
-          imports: (bundle.imports || []).filter(row => row.platform_code === platform.id).map(row => [
-            row.imported_at || '',
-            row.source_file || '',
-            row.updated_by || '未知',
-            row.note || '',
-            row.result || '成功'
-          ]),
-          audits: (bundle.audits || []).filter(row => row.platform_code === platform.id).map(row => [
-            row.action_at || '',
-            row.action_type || '',
-            row.action_target || '',
-            row.updated_by || '未知',
-            row.note || ''
-          ])
-        }));
+        const mergedPlatforms = (bundle.platforms || []).map(platform => {
+          const profileLabel = getFieldProfile(platform.id).label;
+          return {
+            ...platform,
+            contents: (bundle.contents || []).filter(row => row.platform_code === platform.id).map(row => [
+              row.title,
+              row.publish_date || '',
+              String(row.views ?? 0),
+              row.engagement_text || `${row.likes || 0} / ${row.comments || 0}`,
+              row.status || (row.is_hot ? '爆款' : '导入')
+            ]),
+            imports: (bundle.imports || []).filter(row => row.platform_code === platform.id).map(row => [
+              row.imported_at || '',
+              row.source_file || '',
+              row.updated_by || '未知',
+              row.note || '',
+              row.result || '成功',
+              profileLabel,
+              `${row.row_count ?? '-'} 条 / 爆款 ${row.hot_count ?? 0}`
+            ]),
+            audits: (bundle.audits || []).filter(row => row.platform_code === platform.id).map(row => [
+              row.action_at || '',
+              row.action_type || '',
+              row.action_target || '',
+              row.updated_by || '未知',
+              row.note || '',
+              profileLabel
+            ])
+          };
+        });
         if (mergedPlatforms.length) {
           const matched = mergedPlatforms.find(p => p.id === state.platform) || mergedPlatforms[0];
           state.platform = matched.id;
@@ -1586,24 +1600,92 @@
       }
     }
 
-    const ANALYSIS_KEYWORDS = {
-      title: ['标题', 'title', '名称', '视频标题', '文章标题', '笔记标题', '内容标题', '作品标题'],
-      date: ['日期', '时间', 'publish', '发布时间', '发布日期', 'create time', '创建时间'],
-      views: ['浏览', '阅读', '曝光', '播放', '观看', 'view', 'pv', '访问'],
-      likes: ['点赞', '喜欢', 'like', '赞'],
-      favorites: ['收藏', 'favorite', 'star', 'bookmark'],
-      comments: ['评论', 'comment'],
-      shares: ['转发', '分享', 'share'],
-      status: ['状态', '结果', 'status', '是否爆款', '热度'],
-      engagement: ['互动', '互动量', '互动数'],
-      fans: ['粉丝', '关注', 'followers', 'fans'],
-      watchTime: ['完播', '完播率', '观看时长', '停留']
+    const PLATFORM_FIELD_PROFILES = {
+      wechat_video: {
+        label: '微信视频号',
+        keywords: {
+          title: ['视频标题', '视频名称', '标题', '内容标题', 'title', '作品名称'],
+          date: ['发布时间', '发表时间', '发布日期', '日期', '时间', 'publish_time', 'create_time'],
+          views: ['播放量', '浏览量', '视频播放量', '曝光量', 'views', 'view', '播放数'],
+          likes: ['点赞数', '点赞', 'like', 'likes', '赞'],
+          favorites: ['收藏数', '收藏', 'favorite', 'favorites'],
+          comments: ['评论数', '评论', 'comment', 'comments'],
+          shares: ['转发数', '分享数', '转发', '分享', 'share', 'shares'],
+          status: ['是否爆款', '爆款', '状态', '热度', 'status'],
+          watchTime: ['完播率', '平均播放时长', '完播', '观看时长', '平均观看时长', '完成率']
+        },
+        hotThreshold: { views: 1000, engagement: 100 }
+      },
+      wechat_mp: {
+        label: '微信公众号',
+        keywords: {
+          title: ['文章标题', '推文标题', '标题', 'title', '名称'],
+          date: ['发布时间', '推送时间', '发布日期', '日期', '时间', 'publish_time'],
+          views: ['阅读量', '浏览量', '阅读数', 'views', 'pv', '曝光'],
+          likes: ['点赞数', '点赞', '好看', 'like'],
+          favorites: ['在看数', '在看', '收藏', 'favorite'],
+          comments: ['评论数', '评论', 'comment', '留言'],
+          shares: ['分享数', '分享', '转发', 'share'],
+          status: ['是否爆款', '爆款', '状态', 'status'],
+          watchTime: ['完读率', '阅读完成率', '完读', '完成率']
+        },
+        hotThreshold: { views: 800, engagement: 60 }
+      },
+      xhs: {
+        label: '小红书',
+        keywords: {
+          title: ['笔记标题', '标题', '内容标题', 'title'],
+          date: ['发布时间', '发布日期', '日期', '时间', 'publish_time', '笔记时间'],
+          views: ['曝光量', '浏览量', '阅读量', '曝光', 'views', 'impression', '观看'],
+          likes: ['点赞数', '点赞', 'like', '赞'],
+          favorites: ['收藏数', '收藏', 'favorite', 'star'],
+          comments: ['评论数', '评论', 'comment'],
+          shares: ['分享数', '分享', '转发', 'share'],
+          status: ['是否爆款', '爆款', '状态', '热度', 'status'],
+          watchTime: ['平均阅读时长', '完读率', '停留时长']
+        },
+        hotThreshold: { views: 1500, engagement: 120 }
+      },
+      douyin: {
+        label: '抖音',
+        keywords: {
+          title: ['视频标题', '作品名称', '标题', '内容标题', 'title'],
+          date: ['发布时间', '发布日期', '日期', '时间', 'publish_time', 'create_time'],
+          views: ['播放量', '浏览量', '曝光', 'views', 'view', '播放数'],
+          likes: ['点赞数', '点赞', 'like', '赞'],
+          favorites: ['收藏数', '收藏', 'favorite'],
+          comments: ['评论数', '评论', 'comment'],
+          shares: ['分享数', '分享', '转发', 'share'],
+          status: ['是否爆款', '爆款', '状态', '热度', 'status'],
+          watchTime: ['完播率', '平均播放时长', '完播', '完成率']
+        },
+        hotThreshold: { views: 2000, engagement: 200 }
+      }
+    };
+    const DEFAULT_PROFILE = {
+      label: '默认',
+      keywords: {
+        title: ['标题', 'title', '名称'],
+        date: ['日期', '时间', '发布时间', '发布日期', 'publish_time'],
+        views: ['浏览', '阅读', '曝光', '播放', '观看', 'view', 'pv'],
+        likes: ['点赞', '喜欢', 'like', '赞'],
+        favorites: ['收藏', 'favorite', 'star', 'bookmark'],
+        comments: ['评论', 'comment'],
+        shares: ['转发', '分享', 'share'],
+        status: ['状态', '结果', '是否爆款', '热度', 'status'],
+        watchTime: ['完播', '完播率', '观看时长', '停留']
+      },
+      hotThreshold: { views: 1000, engagement: 100 }
     };
 
-    function detectHeaderRow(rows) {
+    function getFieldProfile(platformId) {
+      return PLATFORM_FIELD_PROFILES[platformId] || DEFAULT_PROFILE;
+    }
+
+    function detectHeaderRow(rows, profile) {
       if (!rows.length) return false;
       const joined = rows[0].map(cell => String(cell || '').trim()).join(' ').toLowerCase();
-      return Object.values(ANALYSIS_KEYWORDS).flat().some(word => joined.includes(String(word).toLowerCase()));
+      return Object.values(profile.keywords).flat().some(word => joined.includes(String(word).toLowerCase()));
     }
 
     function normalizeText(value) {
@@ -1635,22 +1717,26 @@
       return String(Number(value.toFixed(2)));
     }
 
-    function summarizeRows(rows, fileName) {
+    function summarizeRows(rows, fileName, platformId) {
+      const profile = getFieldProfile(platformId);
       const cleaned = rows.filter(row => Array.isArray(row) && row.some(cell => String(cell ?? '').trim() !== ''));
-      const hasHeader = detectHeaderRow(cleaned);
+      const hasHeader = detectHeaderRow(cleaned, profile);
       const headers = hasHeader ? cleaned[0].map(normalizeText) : [];
       const dataRows = hasHeader ? cleaned.slice(1) : cleaned;
-      const titleIdx = hasHeader ? matchHeaderIndex(headers, ANALYSIS_KEYWORDS.title) : 0;
-      const dateIdx = hasHeader ? matchHeaderIndex(headers, ANALYSIS_KEYWORDS.date) : 1;
-      const viewsIdx = hasHeader ? matchHeaderIndex(headers, ANALYSIS_KEYWORDS.views) : 2;
-      const likesIdx = hasHeader ? matchHeaderIndex(headers, ANALYSIS_KEYWORDS.likes) : 3;
-      const favIdx = hasHeader ? matchHeaderIndex(headers, ANALYSIS_KEYWORDS.favorites) : 4;
-      const commentsIdx = hasHeader ? matchHeaderIndex(headers, ANALYSIS_KEYWORDS.comments) : 5;
-      const sharesIdx = hasHeader ? matchHeaderIndex(headers, ANALYSIS_KEYWORDS.shares) : 6;
-      const statusIdx = hasHeader ? matchHeaderIndex(headers, ANALYSIS_KEYWORDS.status) : -1;
-      const watchIdx = hasHeader ? matchHeaderIndex(headers, ANALYSIS_KEYWORDS.watchTime) : -1;
+      const kws = profile.keywords;
+      const titleIdx = hasHeader ? matchHeaderIndex(headers, kws.title) : 0;
+      const dateIdx = hasHeader ? matchHeaderIndex(headers, kws.date) : 1;
+      const viewsIdx = hasHeader ? matchHeaderIndex(headers, kws.views) : 2;
+      const likesIdx = hasHeader ? matchHeaderIndex(headers, kws.likes) : 3;
+      const favIdx = hasHeader ? matchHeaderIndex(headers, kws.favorites) : 4;
+      const commentsIdx = hasHeader ? matchHeaderIndex(headers, kws.comments) : 5;
+      const sharesIdx = hasHeader ? matchHeaderIndex(headers, kws.shares) : 6;
+      const statusIdx = hasHeader ? matchHeaderIndex(headers, kws.status) : -1;
+      const watchIdx = hasHeader ? matchHeaderIndex(headers, kws.watchTime) : -1;
 
+      const threshold = profile.hotThreshold || { views: 1000, engagement: 100 };
       const contents = [];
+      const rawRows = [];
       let totalViews = 0;
       let totalLikes = 0;
       let totalFavorites = 0;
@@ -1673,13 +1759,16 @@
         const shares = parseNumber(cells[sharesIdx]) ?? 0;
         const statusRaw = cells[statusIdx] || cells[cells.length - 1] || '';
         const watch = parseNumber(cells[watchIdx]) ?? null;
+        const engagementTotal = (favorites || 0) + (likes || 0) + (comments || 0) + (shares || 0);
         const engagementText = [
           likes ? `${formatMetricNumber(likes)}赞` : '',
           favorites ? `${formatMetricNumber(favorites)}藏` : '',
           comments ? `${formatMetricNumber(comments)}评` : '',
           shares ? `${formatMetricNumber(shares)}转` : ''
         ].filter(Boolean).join(' / ');
-        const isHot = /爆|hot|top|优|高/.test(statusRaw.toLowerCase()) || views >= 1000 || (favorites + likes + comments) >= 100;
+        const isHot = /爆|hot|top|优|高/.test(statusRaw.toLowerCase())
+          || (views || 0) >= threshold.views
+          || engagementTotal >= threshold.engagement;
         if (isHot) hotCount += 1;
         totalViews += views || 0;
         totalLikes += likes || 0;
@@ -1695,33 +1784,49 @@
           engagementText || (watch !== null ? `完播/停留 ${formatMetricNumber(watch)}` : ''),
           isHot ? '爆款' : (statusRaw || '导入')
         ]);
+        rawRows.push({
+          title,
+          publish_date: publishDate,
+          views: views || 0,
+          likes: likes || 0,
+          favorites: favorites || 0,
+          comments: comments || 0,
+          shares: shares || 0,
+          watch_time: watch,
+          engagement_text: engagementText,
+          is_hot: isHot,
+          status: statusRaw,
+          source_file: fileName
+        });
       });
 
       const rowCount = contents.length;
       const avgViews = rowCount ? totalViews / rowCount : 0;
-      const engagementRate = totalViews ? ((totalLikes + totalFavorites + totalComments + totalShares) / totalViews * 100) : 0;
+      const engagementTotal = totalLikes + totalFavorites + totalComments + totalShares;
+      const engagementRate = totalViews ? (engagementTotal / totalViews * 100) : 0;
       const topOne = contents[0]?.[0] || fileName;
       const topTwo = contents[1]?.[0] || '';
       suggestions.push(
-        `这份文件共 ${rowCount} 条内容，平均浏览量约 ${formatMetricNumber(avgViews)}。`,
-        `互动总量约 ${formatMetricNumber(totalLikes + totalFavorites + totalComments + totalShares)}，粗略互动率约 ${engagementRate.toFixed(2)}%。`,
-        hotCount ? `其中 ${hotCount} 条可先按爆款看，优先复盘标题、封面、开头和结尾。` : '这份文件暂时没识别出明显爆款，建议先看浏览最高的前几条。'
+        `按${profile.label}字段口径解析，共 ${rowCount} 条内容，平均浏览量约 ${formatMetricNumber(avgViews)}。`,
+        `互动总量约 ${formatMetricNumber(engagementTotal)}，粗略互动率约 ${engagementRate.toFixed(2)}%。`,
+        hotCount ? `其中 ${hotCount} 条达到 ${profile.label}爆款阈值（浏览≥${threshold.views} 或 互动≥${threshold.engagement}），建议先复盘这几条。` : '这份文件暂时没识别出明显爆款，建议先看浏览最高的前几条。'
       );
-      activity.push([`识别到 ${rowCount} 条内容`, `${fileName} · 自动分析`]);
+      activity.push([`识别到 ${rowCount} 条内容`, `${fileName} · ${profile.label}字段口径`]);
       if (topOne) activity.push([`首条内容：${topOne}`, topTwo ? `第二条：${topTwo}` : '自动分析']);
       if (headers.length) {
         suggestions.push(`已识别表头：${headers.slice(0, 6).join(' / ')}${headers.length > 6 ? '…' : ''}`);
       }
 
       const kpisExtra = [
-        { label: '内容条数', value: String(rowCount), hint: '自动分析' },
-        { label: '总浏览量', value: formatMetricNumber(totalViews), hint: '自动分析' },
-        { label: '总互动量', value: formatMetricNumber(totalLikes + totalFavorites + totalComments + totalShares), hint: '点赞 / 收藏 / 评论 / 转发' },
-        { label: '爆款数', value: String(hotCount), hint: '自动分析' }
+        { label: '内容条数', value: String(rowCount), hint: `${profile.label}字段口径` },
+        { label: '总浏览量', value: formatMetricNumber(totalViews), hint: '按平台口径' },
+        { label: '总互动量', value: formatMetricNumber(engagementTotal), hint: '点赞 / 收藏 / 评论 / 转发' },
+        { label: '爆款数', value: String(hotCount), hint: `阈值 ${threshold.views}/${threshold.engagement}` }
       ];
 
       return {
         contents,
+        rawRows,
         stats: {
           rowCount,
           totalViews,
@@ -1731,11 +1836,15 @@
           totalShares,
           hotCount,
           avgViews,
-          engagementRate
+          engagementRate,
+          engagementTotal,
+          threshold,
+          profileLabel: profile.label,
+          detectedHeaders: headers
         },
         kpisExtra,
         notes: [
-          `这份文件已自动读到 ${rowCount} 条内容。`,
+          `按${profile.label}字段口径，已自动读到 ${rowCount} 条内容。`,
           `总浏览量 ${formatMetricNumber(totalViews)}，平均每条 ${formatMetricNumber(avgViews)}。`,
           hotCount ? `先抓 ${hotCount} 条爆款复盘，别一上来全看。` : '暂时没抓到明显爆款，先看标题和浏览最高的几条。'
         ],
@@ -1743,9 +1852,9 @@
         hots: Array.from(hots).slice(0, 6),
         suggestions,
         activities: activity,
-        week: `本次上传共 ${rowCount} 条，浏览量 ${formatMetricNumber(totalViews)}，先从高浏览内容看起。`,
+        week: `本次上传共 ${rowCount} 条（${profile.label}字段口径），浏览量 ${formatMetricNumber(totalViews)}，先从高浏览内容看起。`,
         month: `当前文件粗略互动率 ${engagementRate.toFixed(2)}%，爆款数 ${hotCount}。`,
-        conversion: `文件里累计互动量 ${formatMetricNumber(totalLikes + totalFavorites + totalComments + totalShares)}，可以继续接转化动作。`
+        conversion: `文件里累计互动量 ${formatMetricNumber(engagementTotal)}，可以继续接转化动作。`
       };
     }
 
@@ -1765,6 +1874,44 @@
       const wb = XLSX.read(buffer, { type: 'array' });
       const sheet = wb.Sheets[wb.SheetNames[0]];
       return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    }
+
+    function formatPublishDate(value) {
+      const text = normalizeText(value);
+      if (!text) return null;
+      const iso = text.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+      if (iso) {
+        const [, y, m, d] = iso;
+        return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      }
+      const cn = text.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+      if (cn) return `${cn[1]}-${String(cn[2]).padStart(2, '0')}-${String(cn[3]).padStart(2, '0')}`;
+      return null;
+    }
+
+    async function hashUploadFile(file) {
+      try {
+        const buffer = await file.arrayBuffer();
+        const hash = await crypto.subtle.digest('SHA-256', buffer);
+        return Array.from(new Uint8Array(hash)).slice(0, 12).map(b => b.toString(16).padStart(2, '0')).join('');
+      } catch (err) {
+        return '';
+      }
+    }
+
+    function buildLogRow(time, file, operator, summary, note, result) {
+      const stats = summary.stats;
+      const parts = [
+        `操作人 ${operator}`,
+        `${stats.profileLabel}字段口径`,
+        `条数 ${stats.rowCount}`,
+        `总浏览 ${formatMetricNumber(stats.totalViews)}`,
+        `总互动 ${formatMetricNumber(stats.engagementTotal)}`,
+        `爆款 ${stats.hotCount}`,
+        `互动率 ${stats.engagementRate.toFixed(2)}%`,
+        note ? `备注 ${note}` : null
+      ].filter(Boolean);
+      return [time, '上传', file.name, operator, parts.join(' · '), result, stats.profileLabel, `${stats.rowCount} 条 / 爆款 ${stats.hotCount}`];
     }
 
     async function handleUpload() {
@@ -1787,13 +1934,29 @@
         const contents = summary.contents;
         const now = new Date().toISOString();
         const importedAt = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-        const importRow = [importedAt, file.name, operator, note || desc || '手动上传测试', '成功'];
-        const auditRow = [importedAt, '上传', file.name, operator, desc || note || '手动上传测试'];
+        const noteText = note || desc || '手动上传测试';
+        const fileHash = await hashUploadFile(file);
+
+        const importRow = [
+          importedAt,
+          file.name,
+          operator,
+          noteText,
+          '成功',
+          summary.stats.profileLabel,
+          `${summary.stats.rowCount} 条 / 爆款 ${summary.stats.hotCount}`
+        ];
+        const auditRow = buildLogRow(importedAt, file, operator, summary, noteText, '成功');
+        const activityLog = [
+          [`上传 ${file.name}`, `${operator} · ${importedAt}`],
+          [`按${summary.stats.profileLabel}字段口径解析`, `${summary.stats.rowCount} 条内容 · ${summary.stats.hotCount} 条爆款`],
+          [`互动率 ${summary.stats.engagementRate.toFixed(2)}%`, `总浏览 ${formatMetricNumber(summary.stats.totalViews)}`]
+        ];
 
         platform.contents = contents;
-        platform.imports = [importRow];
+        platform.imports = [importRow, ...(Array.isArray(platform.imports) ? platform.imports : [])].slice(0, 20);
         platform.audits = [auditRow, ...(Array.isArray(platform.audits) ? platform.audits : [])].slice(0, 20);
-        platform.activities = summary.activities;
+        platform.activities = activityLog.concat(Array.isArray(platform.activities) ? platform.activities : []).slice(0, 20);
         platform.kpisExtra = summary.kpisExtra;
         platform.notes = summary.notes;
         platform.topics = summary.topics;
@@ -1802,6 +1965,13 @@
         platform.week = summary.week;
         platform.month = summary.month;
         platform.conversion = summary.conversion;
+        platform.lastImport = {
+          file: file.name,
+          operator,
+          importedAt,
+          stats: summary.stats,
+          note: noteText
+        };
         platform.spark = summary.stats.rowCount
           ? Array.from({ length: Math.min(8, summary.stats.rowCount) }, (_, i) => {
               const base = summary.stats.totalViews || 1;
@@ -1821,33 +1991,50 @@
             supabaseClient.from(TABLES.auditLogs).delete().eq('platform_code', platform.id)
           ]);
           if (contents.length) {
-            const contentRows = contents.map((row, index) => ({
+            const contentRows = summary.rawRows.map((row, index) => ({
               platform_code: platform.id,
-              title: row[0],
-              publish_date: row[1],
-              views: Number(String(row[2] || '').replace(/,/g, '')) || 0,
-              engagement_text: row[3] || '',
-              status: row[4] || '导入',
+              title: row.title,
+              publish_date: formatPublishDate(row.publish_date),
+              views: row.views,
+              likes: row.likes,
+              favorites: row.favorites,
+              comments: row.comments,
+              shares: row.shares,
+              watch_time: row.watch_time,
+              engagement_text: row.engagement_text,
+              status: row.status || (row.is_hot ? '爆款' : '导入'),
+              is_hot: row.is_hot,
               sort_order: index + 1,
+              source_file: file.name,
               updated_at: now,
               updated_by: operator
             }));
             const importRows = [{
               platform_code: platform.id,
-              imported_at: importRow[0],
+              imported_at: importedAt,
               source_file: file.name,
+              file_size: file.size || null,
+              file_sha: fileHash,
+              row_count: summary.stats.rowCount,
+              detected_headers: summary.stats.detectedHeaders.join(' | ').slice(0, 480),
+              total_views: summary.stats.totalViews,
+              total_engagement: summary.stats.engagementTotal,
+              hot_count: summary.stats.hotCount,
+              engagement_rate: Number(summary.stats.engagementRate.toFixed(2)),
               updated_by: operator,
-              note: note || desc || '手动上传测试',
+              note: noteText,
               result: '成功',
               created_at: now
             }];
             const auditRows = [{
               platform_code: platform.id,
-              action_at: auditRow[0],
+              action_at: importedAt,
               action_type: '上传',
               action_target: file.name,
+              source_file: file.name,
+              result: '成功',
               updated_by: operator,
-              note: desc || note || '手动上传测试',
+              note: `${summary.stats.profileLabel}字段口径 · ${summary.stats.rowCount} 条 · ${summary.stats.hotCount} 条爆款 · 操作人 ${operator} · ${noteText}`,
               created_at: now
             }];
             await Promise.all([
@@ -1857,7 +2044,7 @@
             ]);
           }
         }
-        hint.textContent = `已接收 ${file.name}，自动分析出 ${contents.length} 条内容、${summary.stats.hotCount} 条爆款，已写入${supabaseClient ? '云端和' : ''}当前页面。`;
+        hint.textContent = `已接收 ${file.name}（${summary.stats.profileLabel}字段口径，${contents.length} 条内容 / ${summary.stats.hotCount} 条爆款，操作人 ${operator}），已写入${supabaseClient ? '云端和' : ''}当前页面。`;
         closeModal('uploadModal');
       } catch (err) {
         console.error(err);
