@@ -579,6 +579,22 @@
       grid-template-columns: 1.2fr 0.8fr;
       gap: 12px;
     }
+    .platform-analysis-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.75fr) minmax(260px, .65fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+    .platform-trend-card { min-width: 0; padding: 18px; }
+    .platform-trend-card .chart-box {
+      min-height: 330px;
+      padding: 10px 12px 4px;
+      overflow: hidden;
+    }
+    .platform-trend-card .spark { height: 300px; }
+    .platform-context-card { display: flex; flex-direction: column; gap: 10px; }
+    .platform-context-card .list { margin-top: 2px; }
+    .workspace-copy { margin: 5px 0 14px; color: var(--muted); font-size: 12.5px; line-height: 1.55; }
     .chart-box {
       min-height: 220px;
       border-radius: 18px;
@@ -767,7 +783,7 @@
     .form-field textarea { min-height: 84px; }
     .hidden { display: none !important; }
     @media (max-width: 1180px) {
-      .hero, .grid-2, .grid-3, .grid-4, .kpi-grid, .grid-platforms, .grid-home, .two-col, .chart-wrap { grid-template-columns: 1fr; }
+      .hero, .grid-2, .grid-3, .grid-4, .kpi-grid, .grid-platforms, .grid-home, .two-col, .chart-wrap, .platform-analysis-grid { grid-template-columns: 1fr; }
       .section-head { align-items: start; flex-direction: column; }
       .section-head p { text-align: left; }
       .topbar { align-items: flex-start; flex-direction: column; }
@@ -926,31 +942,31 @@
           </div>
           <div class="content-area">
             <h4 id="platformHeader">微信视频号 · 平台工作台</h4>
+            <p class="workspace-copy">这里是当前平台的运营控制台：看真实指标、趋势、内容明细、导入批次和后续复盘，不再用示例数字填充。</p>
             <div class="chip-row" id="platformChips"></div>
             <div class="kpi-grid" id="platformKpis"></div>
           </div>
         </div>
 
-        <div class="panel" style="margin-top:16px;">
-          <div class="grid-2">
-            <div class="chart-card">
+        <div class="panel platform-analysis-grid" style="margin-top:16px;">
+            <div class="chart-card platform-trend-card">
               <div class="trend-head">
                 <div>
                   <h4>平台趋势图</h4>
-                  <p class="chart-caption" id="platformChartCaption">选择指标查看变化</p>
+                  <p class="chart-caption" id="platformChartCaption">选择真实指标查看变化</p>
                 </div>
                 <div class="metric-switcher" id="platformMetricSwitcher"></div>
               </div>
-              <div class="trend-summary"><strong id="platformTrendValue">-</strong><span id="platformTrendHint">暂无趋势数据</span></div>
+              <div class="trend-summary"><strong id="platformTrendValue">-</strong><span id="platformTrendHint">暂无真实趋势数据</span></div>
               <div class="chart-box">
-                <svg class="spark" id="platformChart" viewBox="0 0 520 160" preserveAspectRatio="none"></svg>
+                <svg class="spark" id="platformChart" viewBox="0 0 760 300" preserveAspectRatio="none"></svg>
               </div>
             </div>
-            <div class="chart-card">
+            <div class="chart-card platform-context-card">
               <h4>平台说明</h4>
+              <p class="chart-caption">只解释当前平台的数据口径和可执行结论。</p>
               <ul class="list" id="platformNotes"></ul>
             </div>
-          </div>
         </div>
 
         <div id="tab-overview" class="tab-panel active" style="margin-top:16px;">
@@ -1500,31 +1516,37 @@
 
     function drawChart(platform, metric) {
       const series = buildTrendSeries(platform, metric);
-      if (!series.length) return '<rect x="0" y="0" width="520" height="160" rx="16" fill="#fff"></rect><text x="260" y="84" text-anchor="middle" fill="#8b93a7" font-size="13">暂无该指标数据</text>';
+      if (!series.length) return '<rect x="0" y="0" width="760" height="300" rx="16" fill="#fff"></rect><text x="380" y="145" text-anchor="middle" fill="#8b93a7" font-size="14">暂无该指标数据</text>';
       const validSeries = series.map(value => value === null || value === undefined || Number.isNaN(Number(value)) ? null : Number(value));
       const numericSeries = validSeries.filter(value => value !== null);
       const max = Math.max(1, ...numericSeries);
       const min = Math.min(0, ...numericSeries);
       const range = Math.max(1, max - min);
       const dates = buildTrendDates(platform, validSeries.length);
+      const left = 42;
+      const right = 724;
+      const plotTop = 34;
+      const plotBottom = 218;
       const points = validSeries.map((n, i) => {
-        const x = 20 + i * (480 / Math.max(1, validSeries.length - 1));
-        const y = n === null ? 140 : 140 - ((n - min) / range) * 110;
+        const x = left + i * ((right - left) / Math.max(1, validSeries.length - 1));
+        const y = n === null ? plotBottom : plotBottom - ((n - min) / range) * (plotBottom - plotTop);
         return { x, y, value: n, date: dates[i] };
       });
       const linePoints = points.filter(point => point.value !== null);
       const d = linePoints.map((point, i) => `${i === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
-      const area = d ? `${d} L 500 148 L 20 148 Z` : '';
+      const area = d ? `${d} L ${right} ${plotBottom + 8} L ${left} ${plotBottom + 8} Z` : '';
       const labels = points.map((point) => {
         if (point.value === null) return '';
         const label = formatTrendValue(point.value, metric);
-        const labelY = point.y < 28 ? point.y + 20 : point.y - 12;
-        const labelX = Math.max(28, Math.min(492, point.x));
-        return `<g><circle cx="${point.x}" cy="${point.y}" r="4.5" fill="${metric.color}"></circle><text x="${labelX}" y="${labelY}" text-anchor="middle" fill="#334155" font-size="10.5" font-weight="600">${label}</text><text x="${labelX}" y="153" text-anchor="middle" fill="#8b93a7" font-size="8.5">${point.date || '日期待补'}</text></g>`;
+        const labelY = point.y < 30 ? point.y + 22 : point.y - 12;
+        const labelX = Math.max(left, Math.min(right, point.x));
+        const date = point.date || '日期待补';
+        return `<g><circle cx="${point.x}" cy="${point.y}" r="4.8" fill="${metric.color}"></circle><text x="${labelX}" y="${labelY}" text-anchor="middle" fill="#334155" font-size="11" font-weight="600">${label}</text><text x="${labelX}" y="246" transform="rotate(-88 ${labelX} 246)" text-anchor="end" fill="#7c8799" font-size="9.5">${date}</text></g>`;
       }).join('');
       return `
         <defs><linearGradient id="fillPlatformMetric" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="${metric.color}" stop-opacity="0.25" /><stop offset="100%" stop-color="${metric.color}" stop-opacity="0.03" /></linearGradient></defs>
-        <rect x="0" y="0" width="520" height="160" rx="16" fill="#fff"></rect>
+        <rect x="0" y="0" width="760" height="300" rx="16" fill="#fff"></rect>
+        <line x1="${left}" y1="${plotBottom + 8}" x2="${right}" y2="${plotBottom + 8}" stroke="#ece7dd" stroke-width="1"></line>
         ${area ? `<path d="${area}" fill="url(#fillPlatformMetric)"></path><path d="${d}" fill="none" stroke="${metric.color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>` : ''}
         ${labels}
       `;
@@ -1549,7 +1571,7 @@
         el('platformChartCaption').textContent = '上传数据后，系统会根据该平台字段显示可分析指标';
         el('platformTrendValue').textContent = '-';
         el('platformTrendHint').textContent = '暂无趋势数据';
-        el('platformChart').innerHTML = '<rect x="0" y="0" width="520" height="160" rx="16" fill="#fff"></rect><text x="260" y="84" text-anchor="middle" fill="#8b93a7" font-size="13">上传数据后显示真实趋势</text>';
+        el('platformChart').innerHTML = '<rect x="0" y="0" width="760" height="300" rx="16" fill="#fff"></rect><text x="380" y="145" text-anchor="middle" fill="#8b93a7" font-size="14">上传数据后显示真实趋势</text>';
         return;
       }
       const series = buildTrendSeries(platform, metric).filter(value => value !== null && value !== undefined);
@@ -1620,7 +1642,7 @@
         <div class="kpi"><div class="label">${k.label}</div><div class="value">${k.value}</div>${k.hint ? `<div class="hint">${k.hint}</div>` : ''}</div>
       `).join('') : '<div class="empty">当前平台还没有可用的数值指标。上传官方后台数据后，只显示文件里真实存在并成功识别的指标。</div>';
       renderTrendChart(p);
-      el('platformNotes').innerHTML = notes.length ? notes.map(n => `<li><strong>${n}</strong><p>该说明根据当前平台及上传数据生成。</p></li>`).join('') : '<li><strong>暂无平台说明</strong><p>上传数据后自动生成。</p></li>';
+      el('platformNotes').innerHTML = notes.length ? notes.map(n => `<li><strong>${n}</strong></li>`).join('') : '<li><strong>暂无平台说明</strong><p>上传官方后台数据后，这里会显示字段口径、数据范围和可执行结论。</p></li>';
       el('contentTable').innerHTML = contents.length ? contents.map(row => `
         <tr><td>${row[0] || ''}</td><td>${normalizePublishDate(row[1]) || '日期未识别'}</td><td>${row[2] || ''}</td><td>${row[3] || ''}</td><td><span class="status ${row[4] === '待优化' ? 'warn' : row[4] === '观察' ? 'warn' : ''}">${row[4] || ''}</span></td></tr>
       `).join('') : '<tr><td colspan="5"><div class="empty">暂无内容数据</div></td></tr>';
