@@ -304,29 +304,33 @@
     .section { display: none; }
     .section.active { display: block; }
     .tabs {
-      display: inline-flex;
-      padding: 4px;
+      display: inline-grid;
+      grid-template-columns: repeat(4, minmax(112px, 1fr));
+      padding: 5px;
       gap: 4px;
       border: 1px solid var(--line);
-      border-radius: 999px;
+      border-radius: 16px;
       background: #fff;
       box-shadow: var(--shadow-soft);
     }
     .tab {
       border: none;
       background: transparent;
-      padding: 8px 14px;
-      border-radius: 999px;
+      padding: 8px 11px;
+      border-radius: 12px;
       color: #475569;
       cursor: pointer;
       font: inherit;
-      font-size: 12.5px;
+      text-align: left;
     }
+    .tab strong { display: block; font-size: 12.5px; }
+    .tab span { display: block; margin-top: 2px; color: var(--muted-2); font-size: 9.5px; white-space: nowrap; }
     .tab.active {
       background: var(--primary-soft);
       color: var(--primary);
-      font-weight: 700;
     }
+    .tab.active strong { font-weight: 700; }
+    .tab.active span { color: var(--primary); opacity: .78; }
     .grid-platforms {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -947,10 +951,10 @@
         <div class="section-head">
           <h3>平台页 Platform</h3>
           <div class="tabs">
-            <button type="button" class="tab active" data-tab="overview" onclick="switchTab('overview')">概览</button>
-            <button type="button" class="tab" data-tab="contents" onclick="switchTab('contents')">内容</button>
-            <button type="button" class="tab" data-tab="logs" onclick="switchTab('logs')">日志</button>
-            <button type="button" class="tab" data-tab="review" onclick="switchTab('review')">复盘</button>
+            <button type="button" class="tab active" data-tab="overview" onclick="switchTab('overview')"><strong>概览</strong><span>指标、趋势和最近动作</span></button>
+            <button type="button" class="tab" data-tab="contents" onclick="switchTab('contents')"><strong>内容</strong><span>专题、爆款和建议</span></button>
+            <button type="button" class="tab" data-tab="logs" onclick="switchTab('logs')"><strong>日志</strong><span>导入与操作留痕</span></button>
+            <button type="button" class="tab" data-tab="review" onclick="switchTab('review')"><strong>复盘</strong><span>周、月与业务结果</span></button>
           </div>
         </div>
 
@@ -1004,6 +1008,10 @@
         </div>
 
         <div id="tab-overview" class="tab-panel active" style="margin-top:16px;">
+          <div class="panel" style="margin-bottom:14px;">
+            <h3>平台概览</h3>
+            <p class="lead" style="font-size:13px;">快速查看真实内容明细和最近动作；核心指标与近 30 天趋势在上方统一展示。</p>
+          </div>
           <div class="grid-2 overview-content-grid">
             <div class="shell">
               <div class="shell-top"><strong>平台内容明细</strong><span class="chip">真实内容记录</span></div>
@@ -1026,6 +1034,10 @@
         </div>
 
         <div id="tab-contents" class="tab-panel hidden" style="margin-top:16px;">
+          <div class="panel" style="margin-bottom:14px;">
+            <h3>内容运营</h3>
+            <p class="lead" style="font-size:13px;">从真实内容记录中整理专题方向、爆款特征和下一步动作；没有数据时不生成标签。</p>
+          </div>
           <div class="grid-3">
             <div class="panel">
               <h3>专题 / 栏目</h3>
@@ -1045,6 +1057,10 @@
         </div>
 
         <div id="tab-logs" class="tab-panel hidden" style="margin-top:16px;">
+          <div class="panel" style="margin-bottom:14px;">
+            <h3>数据与操作留痕</h3>
+            <p class="lead" style="font-size:13px;">核对每次上传的文件、字段口径、操作者和结果，方便多人协作时追溯数据来源。</p>
+          </div>
           <div class="grid-2">
             <div class="shell">
               <div class="shell-top"><strong>导入记录</strong><span class="chip">Import Logs</span></div>
@@ -1068,6 +1084,10 @@
         </div>
 
         <div id="tab-review" class="tab-panel hidden" style="margin-top:16px;">
+          <div class="panel" style="margin-bottom:14px;">
+            <h3>运营复盘</h3>
+            <p class="lead" style="font-size:13px;">把周度、月度表现和业务动作放在一起看，只基于当前平台的真实导入数据生成。</p>
+          </div>
           <div class="grid-3">
             <div class="panel">
               <h3>周度复盘</h3>
@@ -1136,32 +1156,57 @@
   <div class="modal-mask" id="addPlatformModal">
     <div class="modal">
       <div class="modal-head">
-        <strong>新增平台</strong>
+        <div>
+          <strong>新增平台</strong>
+          <p class="chart-caption" style="margin:4px 0 0;">创建独立的平台入口、数据空间、导入记录和复盘区域。</p>
+        </div>
         <button type="button" class="btn" data-close="addPlatformModal" onclick="closeModal('addPlatformModal')">关闭</button>
       </div>
       <div class="modal-body">
         <div class="form-grid">
           <div class="form-field">
-            <label>平台名称</label>
-            <input placeholder="例如：Bilibili" />
+            <label>平台名称 *</label>
+            <input id="newPlatformName" placeholder="例如：Bilibili" />
           </div>
           <div class="form-field">
-            <label>平台 code</label>
-            <input placeholder="例如：bilibili" />
+            <label>平台 code *</label>
+            <input id="newPlatformCode" placeholder="例如：bilibili" />
+          </div>
+          <div class="form-field">
+            <label>平台简称</label>
+            <input id="newPlatformShort" placeholder="例如：B站" />
+          </div>
+          <div class="form-field">
+            <label>平台定位</label>
+            <input id="newPlatformCategory" placeholder="例如：长视频 / 搜索 / 品牌内容" />
           </div>
           <div class="form-field">
             <label>默认负责人</label>
-            <input placeholder="请输入负责人" />
+            <input id="newPlatformOwner" placeholder="请输入负责人" />
           </div>
           <div class="form-field">
-            <label>默认目标</label>
-            <input placeholder="请输入运营目标" />
+            <label>运营目标</label>
+            <input id="newPlatformGoal" placeholder="例如：品牌曝光 / 获客 / 内容沉淀" />
+          </div>
+          <div class="form-field">
+            <label>平台颜色</label>
+            <select id="newPlatformColor">
+              <option value="primary">绿色</option>
+              <option value="amber">橙色</option>
+              <option value="rose">红色</option>
+              <option value="cyan">蓝色</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>数据来源</label>
+            <input id="newPlatformSource" placeholder="例如：平台官方账号后台" />
           </div>
         </div>
+        <div class="empty" id="addPlatformHint" style="margin-top:12px;">平台名称和 code 为必填项。code 只能使用小写字母、数字和下划线，创建后将自动加入首页和平台切换列表。</div>
       </div>
       <div class="modal-foot">
-        <button class="btn">取消</button>
-        <button class="btn primary">保存平台</button>
+        <button class="btn" type="button" onclick="closeModal('addPlatformModal')">取消</button>
+        <button class="btn primary" type="button" onclick="handleAddPlatform()">保存平台</button>
       </div>
     </div>
   </div>
@@ -1414,6 +1459,58 @@
       const modal = el(id);
       if (modal) modal.classList.remove('show');
     }
+
+    function createEmptyPlatform(config) {
+      return {
+        id: config.id,
+        name: config.name,
+        short: config.short || config.name,
+        category: config.category || '未填写定位',
+        color: config.color || 'primary',
+        owner: config.owner || '',
+        goal: config.goal || '',
+        source: config.source || '',
+        kpis: [], chips: [], notes: [], topics: [], hots: [], suggestions: [], kpisExtra: [],
+        contents: [], imports: [], audits: [], activities: [], importHashes: [],
+        week: '', month: '', conversion: '', spark: [], trendMetrics: {}, trendDates: [],
+        trendRange: { mode: '30', start: '', end: '' }
+      };
+    }
+
+    async function handleAddPlatform() {
+      const hint = el('addPlatformHint');
+      const name = (el('newPlatformName').value || '').trim();
+      const id = (el('newPlatformCode').value || '').trim().toLowerCase();
+      const short = (el('newPlatformShort').value || '').trim();
+      const category = (el('newPlatformCategory').value || '').trim();
+      const owner = (el('newPlatformOwner').value || '').trim();
+      const goal = (el('newPlatformGoal').value || '').trim();
+      const source = (el('newPlatformSource').value || '').trim();
+      const color = el('newPlatformColor').value || 'primary';
+      if (!name || !id) { hint.textContent = '平台名称和平台 code 都要填写。'; return; }
+      if (!/^[a-z0-9_]+$/.test(id)) { hint.textContent = '平台 code 只能使用小写字母、数字和下划线。'; return; }
+      if (platforms.some(platform => platform.id === id)) { hint.textContent = '这个平台 code 已经存在，请换一个。'; return; }
+      const platform = createEmptyPlatform({ id, name, short, category, owner, goal, source, color });
+      try {
+        if (supabaseClient) {
+          const { error } = await supabaseClient.from(TABLES.platforms).upsert({ ...toDbPlatformRow(platform), owner: owner || null, description: [goal, source].filter(Boolean).join(' · ') || null }, { onConflict: 'code' });
+          if (error) throw error;
+          state.dataSource = 'supabase';
+        } else {
+          state.dataSource = 'uploaded';
+        }
+        platforms.push(platform);
+        state.platform = id;
+        state.tab = 'overview';
+        renderAll();
+        closeModal('addPlatformModal');
+        hint.textContent = '平台已创建';
+      } catch (err) {
+        console.error(err);
+        hint.textContent = `保存失败：${err.message}`;
+      }
+    }
+
 
     function parseDisplayedMetric(value) {
       const text = String(value || '').trim().toLowerCase().replace(/,/g, '');
@@ -2464,6 +2561,7 @@
     window.syncFromCloud = syncFromCloud;
     window.saveCurrentToCloud = saveCurrentToCloud;
     window.handleUpload = handleUpload;
+    window.handleAddPlatform = handleAddPlatform;
 
     try {
       renderAll();
