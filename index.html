@@ -796,7 +796,7 @@
       <div class="top-actions">
         <label class="field-inline">
           <span>当前操作者</span>
-          <input id="operatorInput" value="张三" />
+          <input id="operatorInput" placeholder="请输入操作者姓名" />
         </label>
         <button type="button" class="btn soft" id="goHomeBtn" onclick="setView('home')">主页</button>
         <button type="button" class="btn" id="syncCloudBtn" onclick="syncFromCloud()">从云端加载</button>
@@ -828,7 +828,7 @@
           <dl class="kv">
             <dt>所在页面</dt><dd id="modeText">主页</dd>
             <dt>当前平台</dt><dd id="platformText">微信视频号</dd>
-            <dt>当前操作者</dt><dd id="operatorEcho">张三</dd>
+            <dt>当前操作者</dt><dd id="operatorEcho">未填写</dd>
             <dt>数据状态</dt><dd id="sourceText">干净底座，等待上传数据</dd>
           </dl>
         </div>
@@ -853,7 +853,7 @@
           <div class="grid-2">
             <div>
               <div class="chip-row">
-                <span class="chip">当前操作者：<span id="operatorChip">张三</span></span>
+                <span class="chip">当前操作者：<span id="operatorChip">未填写</span></span>
                 <span class="chip">已配置平台：<span id="homePlatformCount">4</span></span>
                 <span class="chip">已有数据平台：<span id="homeDataPlatformCount">0</span></span>
                 <span class="chip">最近上传：<span id="homeImportCount">0</span></span>
@@ -1067,11 +1067,11 @@
           </div>
           <div class="form-field">
             <label>口径备注</label>
-            <input id="uploadNote" value="近 30 天官方后台导出" />
+            <input id="uploadNote" placeholder="例如：近 30 天官方后台导出" />
           </div>
           <div class="form-field" style="grid-column: 1 / -1;">
             <label>上传说明</label>
-            <textarea id="uploadDesc">导入后将写入云端，并自动生成导入记录。</textarea>
+            <textarea id="uploadDesc" placeholder="可选：补充本次上传范围或数据口径"></textarea>
           </div>
         </div>
         <div class="empty" id="uploadHint" style="margin-top:12px;">请选择 csv / xlsx 文件，系统会先把文件名和导入记录写进云端，再尽量解析前几条内容。</div>
@@ -1093,19 +1093,19 @@
         <div class="form-grid">
           <div class="form-field">
             <label>平台名称</label>
-            <input value="Threads" />
+            <input placeholder="例如：Bilibili" />
           </div>
           <div class="form-field">
             <label>平台 code</label>
-            <input value="threads" />
+            <input placeholder="例如：bilibili" />
           </div>
           <div class="form-field">
             <label>默认负责人</label>
-            <input value="运营小组" />
+            <input placeholder="请输入负责人" />
           </div>
           <div class="form-field">
             <label>默认目标</label>
-            <input value="品牌曝光 / 获客" />
+            <input placeholder="请输入运营目标" />
           </div>
         </div>
       </div>
@@ -1183,8 +1183,8 @@
       view: 'home',
       platform: 'wechat_video',
       tab: 'overview',
-      operator: '张三',
-      dataSource: 'sample'
+      operator: '',
+      dataSource: 'clean'
     };
 
     const platforms = [
@@ -1194,39 +1194,9 @@
         short: '视频号',
         category: '私域 / 直播 / 触达',
         color: 'primary',
-        kpis: [
-          { label: '浏览量', value: '32.8k', hint: '近 30 天' },
-          { label: '粉丝数', value: '18.4k', hint: '累计' },
-          { label: '完播率', value: '42.6%', hint: '均值' },
-          { label: '爆款数', value: '9', hint: '达标阈值' },
-        ],
-        chips: ['内容策略：日更 + 复盘', '重点：私域承接', '目标：线索转化'],
-        notes: [
-          '适合承接直播、视频内容和私域动作。',
-          '建议更看重完播率、转化和互动质量。',
-          '内容标题和发布时间对结果影响很大。'
-        ],
-        topics: ['直播复盘', '私域承接', '用户增长'],
-        hots: ['钩子强', '标题清晰', '结尾有引导', '强 CTA'],
-        suggestions: [
-          '保留高完播内容的脚本结构。',
-          '把直播摘要做成内容专题。',
-          '增加结尾引导到企微动作。'
-        ],
-        kpisExtra: [
-          { label: '日均点赞率', value: '6.8%', hint: '近 30 天' },
-          { label: '收藏率', value: '2.3%', hint: '近 30 天' },
-          { label: '评论率', value: '1.2%', hint: '近 30 天' },
-          { label: '线索数', value: '86', hint: '业务结果' },
-        ],
-        contents: [],
-        imports: [],
-        audits: [],
-        activities: [],
-        week: '本周视频号整体浏览增长 18%，其中“私域承接”类内容表现最好。建议继续复用强 CTA 脚本，压缩纯介绍类内容。',
-        month: '本月视频号在业务结果上更强，但完播率还有提升空间。下个月重点抓首 3 秒和结尾引导。',
-        conversion: '当前线索数 86，主要来自内容末尾引导和直播切片。若要继续放大，需要把内容与企微承接链路进一步打通。',
-        spark: [60, 72, 66, 88, 94, 108, 100, 118]
+        kpis: [], chips: [], notes: [], topics: [], hots: [], suggestions: [], kpisExtra: [],
+        contents: [], imports: [], audits: [], activities: [],
+        week: '', month: '', conversion: '', spark: [], trendMetrics: {}, trendDates: []
       },
       {
         id: 'wechat_mp',
@@ -1234,39 +1204,9 @@
         short: '公众号',
         category: '文章 / 搜索 / 长内容',
         color: 'amber',
-        kpis: [
-          { label: '浏览量', value: '24.1k', hint: '近 30 天' },
-          { label: '粉丝数', value: '15.7k', hint: '累计' },
-          { label: '完读率', value: '28.4%', hint: '均值' },
-          { label: '爆款数', value: '6', hint: '达标阈值' },
-        ],
-        chips: ['内容策略：方法论文章', '重点：搜索与沉淀', '目标：品牌 + 留资'],
-        notes: [
-          '适合沉淀长内容、方法论和搜索流量。',
-          '文章结构要更稳定，标题和封面对点击影响大。',
-          '可作为所有内容的知识库中心。'
-        ],
-        topics: ['方法论', '案例拆解', '品牌复盘'],
-        hots: ['标题明确', '开头给结论', '中段有结构', '结尾留转化'],
-        suggestions: [
-          '增强文章摘要与目录结构。',
-          '把高阅读文章做成系列。',
-          '补一个内容专题页。'
-        ],
-        kpisExtra: [
-          { label: '日均点赞率', value: '4.1%', hint: '近 30 天' },
-          { label: '收藏率', value: '5.6%', hint: '近 30 天' },
-          { label: '评论率', value: '0.8%', hint: '近 30 天' },
-          { label: '留资数', value: '43', hint: '业务结果' },
-        ],
-        contents: [],
-        imports: [],
-        audits: [],
-        activities: [],
-        week: '本周公众号的收藏率表现不错，说明长内容在沉淀价值上更强。下一步可以继续强化系列化写法。',
-        month: '月度看公众号更适合作为知识库和长线资产，流量不一定最大，但留存价值更稳。',
-        conversion: '留资数 43，说明内容有一定转化能力，但仍需要更明确的 CTA 和路径承接。',
-        spark: [52, 54, 57, 63, 68, 71, 74, 80]
+        kpis: [], chips: [], notes: [], topics: [], hots: [], suggestions: [], kpisExtra: [],
+        contents: [], imports: [], audits: [], activities: [],
+        week: '', month: '', conversion: '', spark: [], trendMetrics: {}, trendDates: []
       },
       {
         id: 'xhs',
@@ -1274,39 +1214,9 @@
         short: '小红书',
         category: '种草 / 搜索 / 爆款',
         color: 'rose',
-        kpis: [
-          { label: '浏览量', value: '38.2k', hint: '近 30 天' },
-          { label: '粉丝数', value: '21.3k', hint: '累计' },
-          { label: '完播率', value: '38.9%', hint: '均值' },
-          { label: '爆款数', value: '11', hint: '达标阈值' },
-        ],
-        chips: ['内容策略：搜索友好', '重点：封面和标题', '目标：种草转化'],
-        notes: [
-          '适合种草和搜索流量，标题封面非常关键。',
-          '收藏率通常是一个很重要的信号。',
-          '内容要更接近用户问题，而不是公司自嗨。'
-        ],
-        topics: ['种草笔记', '问题解答', '选题测试'],
-        hots: ['标题强搜索词', '封面有痛点', '内容更生活化', '收藏导向'],
-        suggestions: [
-          '多做用户问题型选题。',
-          '把高收藏内容做系列延展。',
-          '统一封面和标题风格。'
-        ],
-        kpisExtra: [
-          { label: '日均点赞率', value: '8.3%', hint: '近 30 天' },
-          { label: '收藏率', value: '7.8%', hint: '近 30 天' },
-          { label: '评论率', value: '1.6%', hint: '近 30 天' },
-          { label: '咨询数', value: '58', hint: '业务结果' },
-        ],
-        contents: [],
-        imports: [],
-        audits: [],
-        activities: [],
-        week: '小红书本周爆款数最多，说明标题和封面策略已经开始起作用。继续围绕用户问题写，会更稳。',
-        month: '月度维度看，小红书是最适合冲曝光和收藏的阵地，后面可以重点做系列化选题。',
-        conversion: '咨询数 58，说明内容已经有转化苗头，但还可以更明确地把用户引到下一步动作。',
-        spark: [64, 78, 82, 95, 110, 108, 124, 138]
+        kpis: [], chips: [], notes: [], topics: [], hots: [], suggestions: [], kpisExtra: [],
+        contents: [], imports: [], audits: [], activities: [],
+        week: '', month: '', conversion: '', spark: [], trendMetrics: {}, trendDates: []
       },
       {
         id: 'douyin',
@@ -1314,39 +1224,9 @@
         short: '抖音',
         category: '短视频 / 完播 / 转化',
         color: 'cyan',
-        kpis: [
-          { label: '浏览量', value: '42.6k', hint: '近 30 天' },
-          { label: '粉丝数', value: '27.1k', hint: '累计' },
-          { label: '完播率', value: '45.8%', hint: '均值' },
-          { label: '爆款数', value: '13', hint: '达标阈值' },
-        ],
-        chips: ['内容策略：短平快', '重点：前 3 秒', '目标：流量 + 转化'],
-        notes: [
-          '最看重开头、节奏和完播率。',
-          '适合快速测试脚本和选题。',
-          '爆款结构一旦打出来，可以快速复制。'
-        ],
-        topics: ['开头钩子', '脚本测试', '结果导向'],
-        hots: ['前 3 秒强钩子', '节奏紧凑', '强对比', '强行动引导'],
-        suggestions: [
-          '复用高完播开头模板。',
-          '加强短视频结尾 CTA。',
-          '把爆款脚本整理成模板库。'
-        ],
-        kpisExtra: [
-          { label: '日均点赞率', value: '7.4%', hint: '近 30 天' },
-          { label: '收藏率', value: '1.9%', hint: '近 30 天' },
-          { label: '评论率', value: '2.3%', hint: '近 30 天' },
-          { label: '线索数', value: '102', hint: '业务结果' },
-        ],
-        contents: [],
-        imports: [],
-        audits: [],
-        activities: [],
-        week: '抖音的完播率最值得盯，说明短内容结构已经开始稳定。可以继续复用前 3 秒钩子。',
-        month: '抖音这个月的转化动作表现不错，但内容节奏还可以更统一。建议把爆款结构做成模板。',
-        conversion: '线索数 102，是当前最强的转化平台之一。后面要重点看内容和转化页之间的衔接。',
-        spark: [70, 92, 88, 104, 118, 122, 130, 146]
+        kpis: [], chips: [], notes: [], topics: [], hots: [], suggestions: [], kpisExtra: [],
+        contents: [], imports: [], audits: [], activities: [],
+        week: '', month: '', conversion: '', spark: [], trendMetrics: {}, trendDates: []
       }
     ];
 
@@ -1428,10 +1308,12 @@
         imports: row.imports || [],
         audits: row.audits || [],
         activities: row.activities || [],
-        week: row.week_review || '暂无周度复盘',
-        month: row.month_review || '暂无月度复盘',
-        conversion: row.conversion_review || '暂无业务结果',
-        spark: row.spark || [60, 72, 66, 88, 94, 108, 100, 118]
+        week: row.week_review || '',
+        month: row.month_review || '',
+        conversion: row.conversion_review || '',
+        spark: row.spark || [],
+        trendMetrics: row.trend_metrics || {},
+        trendDates: row.trend_dates || []
       };
     }
 
@@ -1589,24 +1471,31 @@
       const uploaded = platform.trendMetrics || {};
       return configured.filter(metric => {
         if (metric.id === 'completionRate') return Array.isArray(uploaded.completionRate) && uploaded.completionRate.some(value => value !== null && value !== undefined);
-        if (metric.id !== 'views' && state.dataSource !== 'uploaded') return false;
-        if (metric.id !== 'views') return Array.isArray(uploaded[metric.id]) && uploaded[metric.id].length > 0;
-        return true;
+        if (metric.id === 'views') {
+          if (state.dataSource === 'clean') return false;
+          if (state.dataSource === 'uploaded') return Array.isArray(uploaded.views) && uploaded.views.some(value => Number(value) > 0);
+          return Array.isArray(platform.contents) && platform.contents.some(row => parseDisplayedMetric(row[2]) > 0);
+        }
+        if (state.dataSource !== 'uploaded') return false;
+        return Array.isArray(uploaded[metric.id]) && uploaded[metric.id].some(value => Number(value) > 0);
       });
     }
 
     function buildTrendSeries(platform, metric) {
       const uploaded = platform.trendMetrics || {};
       if (Array.isArray(uploaded[metric.id]) && uploaded[metric.id].length) return uploaded[metric.id];
-      if (metric.id === 'views') return Array.isArray(platform.spark) ? platform.spark : [];
-      const kpi = [...(platform.kpis || []), ...(platform.kpisExtra || [])].find(item => String(item.label || '').includes(metric.label.replace('率', '')));
-      const value = parseNumber(kpi?.value);
-      return value === null ? [] : Array.from({ length: 8 }, () => value);
+      if (metric.id === 'views' && state.dataSource === 'supabase') return (Array.isArray(platform.contents) ? platform.contents : []).map(row => parseDisplayedMetric(row[2])).filter(value => value > 0);
+      return [];
     }
 
     function formatTrendValue(value, metric) {
       if (value === null || value === undefined || Number.isNaN(value)) return '-';
       return metric.unit === '%' ? `${Number(value).toFixed(2)}%` : formatCompactNumber(value);
+    }
+
+    function buildTrendDates(platform, length) {
+      const dates = Array.isArray(platform.trendDates) ? platform.trendDates : [];
+      return Array.from({ length }, (_, index) => normalizePublishDate(dates[index]) || '');
     }
 
     function drawChart(platform, metric) {
@@ -1617,20 +1506,21 @@
       const max = Math.max(1, ...numericSeries);
       const min = Math.min(0, ...numericSeries);
       const range = Math.max(1, max - min);
+      const dates = buildTrendDates(platform, validSeries.length);
       const points = validSeries.map((n, i) => {
         const x = 20 + i * (480 / Math.max(1, validSeries.length - 1));
         const y = n === null ? 140 : 140 - ((n - min) / range) * 110;
-        return { x, y, value: n };
+        return { x, y, value: n, date: dates[i] };
       });
       const linePoints = points.filter(point => point.value !== null);
       const d = linePoints.map((point, i) => `${i === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
       const area = d ? `${d} L 500 148 L 20 148 Z` : '';
-      const labels = points.map((point, index) => {
+      const labels = points.map((point) => {
         if (point.value === null) return '';
         const label = formatTrendValue(point.value, metric);
         const labelY = point.y < 28 ? point.y + 20 : point.y - 12;
         const labelX = Math.max(28, Math.min(492, point.x));
-        return `<g><circle cx="${point.x}" cy="${point.y}" r="4.5" fill="${metric.color}"></circle><text x="${labelX}" y="${labelY}" text-anchor="middle" fill="#334155" font-size="10.5" font-weight="600">${label}</text></g>`;
+        return `<g><circle cx="${point.x}" cy="${point.y}" r="4.5" fill="${metric.color}"></circle><text x="${labelX}" y="${labelY}" text-anchor="middle" fill="#334155" font-size="10.5" font-weight="600">${label}</text><text x="${labelX}" y="153" text-anchor="middle" fill="#8b93a7" font-size="8.5">${point.date || '日期待补'}</text></g>`;
       }).join('');
       return `
         <defs><linearGradient id="fillPlatformMetric" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="${metric.color}" stop-opacity="0.25" /><stop offset="100%" stop-color="${metric.color}" stop-opacity="0.03" /></linearGradient></defs>
@@ -1659,7 +1549,7 @@
         el('platformChartCaption').textContent = '上传数据后，系统会根据该平台字段显示可分析指标';
         el('platformTrendValue').textContent = '-';
         el('platformTrendHint').textContent = '暂无趋势数据';
-        el('platformChart').innerHTML = drawChart(platform, { id: 'views', unit: '次', color: '#2f6f5e' });
+        el('platformChart').innerHTML = '<rect x="0" y="0" width="520" height="160" rx="16" fill="#fff"></rect><text x="260" y="84" text-anchor="middle" fill="#8b93a7" font-size="13">上传数据后显示真实趋势</text>';
         return;
       }
       const series = buildTrendSeries(platform, metric).filter(value => value !== null && value !== undefined);
@@ -1671,29 +1561,68 @@
       el('platformChart').innerHTML = drawChart(platform, metric);
     }
 
+    function hasMetricValue(metric) {
+      if (!metric || metric.value === null || metric.value === undefined) return false;
+      const value = String(metric.value).trim().toLowerCase();
+      return value !== '' && value !== '-' && value !== 'null' && value !== 'undefined' && value !== 'nan';
+    }
+
+    function getPlatformKpis(platform) {
+      if (state.dataSource === 'uploaded') {
+        return (Array.isArray(platform.kpisExtra) ? platform.kpisExtra : []).filter(hasMetricValue);
+      }
+      if (state.dataSource === 'supabase') {
+        const contents = Array.isArray(platform.contents) ? platform.contents : [];
+        const imports = Array.isArray(platform.imports) ? platform.imports : [];
+        if (!contents.length && !imports.length) return [];
+        const stats = platform.cloudStats || {};
+        const totalViews = Number(stats.totalViews) || contents.reduce((sum, row) => sum + parseDisplayedMetric(row[2]), 0);
+        const totalLikes = Number(stats.totalLikes) || 0;
+        const totalFavorites = Number(stats.totalFavorites) || 0;
+        const totalEngagement = totalLikes + totalFavorites + (Number(stats.totalComments) || 0) + (Number(stats.totalShares) || 0);
+        const completionValues = Array.isArray(platform.trendMetrics?.completionRate)
+          ? platform.trendMetrics.completionRate.filter(value => value !== null && value !== undefined && Number.isFinite(Number(value)))
+          : [];
+        const completionAverage = completionValues.length
+          ? completionValues.reduce((sum, value) => sum + Number(value), 0) / completionValues.length
+          : null;
+        const hotCount = contents.filter(row => row[4] === '爆款').length;
+        return [
+          contents.length ? { label: '内容条数', value: String(contents.length), hint: '云端已保存内容' } : null,
+          totalViews > 0 ? { label: platform.id === 'wechat_mp' ? '总阅读量' : platform.id === 'xhs' ? '总曝光量' : platform.id === 'douyin' ? '总播放量' : '总浏览量', value: formatCompactNumber(totalViews), hint: '云端数据汇总' } : null,
+          totalEngagement > 0 ? { label: '总互动量', value: formatCompactNumber(totalEngagement), hint: '云端点赞 / 收藏 / 评论 / 转发' } : null,
+          hotCount > 0 ? { label: '爆款数', value: String(hotCount), hint: '按真实记录状态统计' } : null,
+          totalViews > 0 && totalLikes > 0 ? { label: '点赞率', value: `${(totalLikes / totalViews * 100).toFixed(2)}%`, hint: '云端总点赞 ÷ 总浏览' } : null,
+          totalViews > 0 && totalFavorites > 0 ? { label: platform.id === 'wechat_mp' ? '收藏/在看率' : '收藏率', value: `${(totalFavorites / totalViews * 100).toFixed(2)}%`, hint: '云端总收藏 ÷ 总浏览' } : null,
+          completionAverage !== null ? { label: platform.id === 'wechat_mp' ? '完读率' : '完播率', value: `${completionAverage.toFixed(2)}%`, hint: '云端字段平均值' } : null,
+          imports.length ? { label: '导入批次', value: String(imports.length), hint: '保留上传记录' } : null
+        ].filter(Boolean);
+      }
+      return [];
+    }
+
     function renderPlatform() {
       const p = getPlatform() || {};
-      const chips = Array.isArray(p.chips) ? p.chips : [];
-      const kpis = [...(Array.isArray(p.kpis) ? p.kpis : []), ...(Array.isArray(p.kpisExtra) ? p.kpisExtra : [])];
-      const notes = Array.isArray(p.notes) ? p.notes : [];
+      const chips = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.chips) ? p.chips : [];
+      const kpis = getPlatformKpis(p);
+      const notes = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.notes) ? p.notes : [];
       const contents = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.contents) ? p.contents : [];
       const imports = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.imports) ? p.imports : [];
       const audits = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.audits) ? p.audits : [];
-      const topics = Array.isArray(p.topics) ? p.topics : [];
-      const hots = Array.isArray(p.hots) ? p.hots : [];
-      const suggestions = Array.isArray(p.suggestions) ? p.suggestions : [];
+      const topics = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.topics) ? p.topics : [];
+      const hots = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.hots) ? p.hots : [];
+      const suggestions = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.suggestions) ? p.suggestions : [];
       const activities = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.activities) ? p.activities : [];
-      const spark = Array.isArray(p.spark) && p.spark.length ? p.spark : [60, 72, 66, 88, 94, 108, 100, 118];
       el('platformText').textContent = p.name || '未命名平台';
       el('platformHeader').textContent = `${p.name || '未命名平台'} · 平台工作台`;
       el('platformChips').innerHTML = chips.map(t => `<span class="chip">${t}</span>`).join('') || '<span class="chip">暂无标签</span>';
-      el('platformKpis').innerHTML = kpis.map(k => `
-        <div class="kpi"><div class="label">${k.label || '指标'}</div><div class="value">${k.value || '-'}</div><div class="hint">${k.hint || ''}</div></div>
-      `).join('') || '<div class="empty">暂无 KPI 数据</div>';
+      el('platformKpis').innerHTML = kpis.length ? kpis.map(k => `
+        <div class="kpi"><div class="label">${k.label}</div><div class="value">${k.value}</div>${k.hint ? `<div class="hint">${k.hint}</div>` : ''}</div>
+      `).join('') : '<div class="empty">当前平台还没有可用的数值指标。上传官方后台数据后，只显示文件里真实存在并成功识别的指标。</div>';
       renderTrendChart(p);
       el('platformNotes').innerHTML = notes.length ? notes.map(n => `<li><strong>${n}</strong><p>该说明根据当前平台及上传数据生成。</p></li>`).join('') : '<li><strong>暂无平台说明</strong><p>上传数据后自动生成。</p></li>';
       el('contentTable').innerHTML = contents.length ? contents.map(row => `
-        <tr><td>${row[0] || ''}</td><td>${row[1] || ''}</td><td>${row[2] || ''}</td><td>${row[3] || ''}</td><td><span class="status ${row[4] === '待优化' ? 'warn' : row[4] === '观察' ? 'warn' : ''}">${row[4] || ''}</span></td></tr>
+        <tr><td>${row[0] || ''}</td><td>${normalizePublishDate(row[1]) || '日期未识别'}</td><td>${row[2] || ''}</td><td>${row[3] || ''}</td><td><span class="status ${row[4] === '待优化' ? 'warn' : row[4] === '观察' ? 'warn' : ''}">${row[4] || ''}</span></td></tr>
       `).join('') : '<tr><td colspan="5"><div class="empty">暂无内容数据</div></td></tr>';
       el('importLogTable').innerHTML = imports.length ? imports.map(row => {
         const note = row[3] || '';
@@ -1750,9 +1679,9 @@
       el('uploadPlatform').innerHTML = platforms.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
       el('uploadPlatform').value = state.platform;
       el('uploadOperator').value = state.operator;
-      el('operatorEcho').textContent = state.operator;
-      el('operatorChip').textContent = state.operator;
-      el('sourceText').textContent = state.dataSource === 'supabase' ? 'Supabase 云端数据' : state.dataSource === 'uploaded' ? '已上传测试数据，可进入平台查看分析' : '干净底座，等待上传官方后台数据';
+      el('operatorEcho').textContent = state.operator || '未填写';
+      el('operatorChip').textContent = state.operator || '未填写';
+      el('sourceText').textContent = state.dataSource === 'supabase' ? 'Supabase 云端数据' : state.dataSource === 'uploaded' ? '已读取本次上传的真实数据，可进入平台查看分析' : '干净底座，等待上传官方后台数据';
       el('dataSourceBadge').textContent = state.dataSource === 'supabase' ? 'GitHub Pages 主页面 · Supabase Connected' : state.dataSource === 'uploaded' ? 'GitHub Pages 主页面 · Uploaded' : 'GitHub Pages 主页面 · Clean Base';
     }
 
@@ -1761,18 +1690,8 @@
       renderPlatformList();
       renderPlatform();
       if (state.dataSource !== 'supabase') {
-        el('sourceText').textContent = state.dataSource === 'uploaded' ? '已上传测试数据，可进入平台查看分析' : '干净底座，等待上传官方后台数据';
+        el('sourceText').textContent = state.dataSource === 'uploaded' ? '已读取本次上传的真实数据，可进入平台查看分析' : '干净底座，等待上传官方后台数据';
       }
-    }
-
-    async function loadSupabaseSeed() {
-      if (!supabaseClient) throw new Error('Supabase 客户端未初始化');
-      const { data: platformRows, error: platformErr } = await supabaseClient
-        .from(TABLES.platforms)
-        .select('*')
-        .order('updated_at', { ascending: false });
-      if (platformErr) throw platformErr;
-      return platformRows || [];
     }
 
     async function loadCloudStructure() {
@@ -1807,13 +1726,36 @@
         const bundle = await loadCloudStructure();
         const mergedPlatforms = (bundle.platforms || []).map(platform => {
           const profileLabel = getFieldProfile(platform.id).label;
+          const cloudContents = (bundle.contents || []).filter(row => row.platform_code === platform.id);
+          const trendViews = cloudContents.map(row => Number(row.views)).map(value => Number.isFinite(value) ? value : null);
+          const trendLikesRate = cloudContents.map(row => Number(row.views) > 0 && Number(row.likes) > 0 ? Number(row.likes) / Number(row.views) * 100 : null);
+          const trendFavoritesRate = cloudContents.map(row => Number(row.views) > 0 && Number(row.favorites) > 0 ? Number(row.favorites) / Number(row.views) * 100 : null);
+          const trendCompletionRate = cloudContents.map(row => row.watch_time === null || row.watch_time === undefined ? null : (Number(row.watch_time) <= 1 ? Number(row.watch_time) * 100 : Number(row.watch_time)));
+          const totalViews = cloudContents.reduce((sum, row) => sum + (Number(row.views) || 0), 0);
+          const totalLikes = cloudContents.reduce((sum, row) => sum + (Number(row.likes) || 0), 0);
+          const totalFavorites = cloudContents.reduce((sum, row) => sum + (Number(row.favorites) || 0), 0);
+          const totalComments = cloudContents.reduce((sum, row) => sum + (Number(row.comments) || 0), 0);
+          const totalShares = cloudContents.reduce((sum, row) => sum + (Number(row.shares) || 0), 0);
           return {
             ...platform,
-            contents: (bundle.contents || []).filter(row => row.platform_code === platform.id).map(row => [
-              row.title,
+            cloudStats: { totalViews, totalLikes, totalFavorites, totalComments, totalShares },
+            trendMetrics: {
+              views: trendViews,
+              likesRate: trendLikesRate,
+              favoritesRate: trendFavoritesRate,
+              completionRate: trendCompletionRate
+            },
+            trendDates: cloudContents.map(row => row.publish_date || ''),
+            contents: cloudContents.map(row => [
+              row.title || '',
               row.publish_date || '',
-              String(row.views ?? 0),
-              row.engagement_text || `${row.likes || 0} / ${row.comments || 0}`,
+              row.views === null || row.views === undefined ? '' : String(row.views),
+              row.engagement_text || [
+                row.likes ? `${row.likes}赞` : '',
+                row.favorites ? `${row.favorites}藏` : '',
+                row.comments ? `${row.comments}评` : '',
+                row.shares ? `${row.shares}转` : ''
+              ].filter(Boolean).join(' / '),
               row.status || (row.is_hot ? '爆款' : '导入')
             ]),
             imports: (bundle.imports || []).filter(row => row.platform_code === platform.id).map(row => [
@@ -1845,7 +1787,7 @@
         el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · Supabase Connected';
         el('sourceText').textContent = 'Supabase 云端数据';
       } catch (err) {
-        state.dataSource = 'sample';
+        state.dataSource = 'clean';
         renderAll();
         el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · Clean Base';
         el('sourceText').textContent = `云端读取失败，已回到干净底座：${err.message}`;
@@ -1944,6 +1886,49 @@
       return String(value ?? '').replace(/\s+/g, ' ').trim();
     }
 
+    function normalizePublishDate(value) {
+      if (value === null || value === undefined || value === '') return '';
+      if (Object.prototype.toString.call(value) === '[object Date]' && !Number.isNaN(value.getTime())) {
+        const year = value.getFullYear();
+        const month = value.getMonth() + 1;
+        const day = value.getDate();
+        const candidate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        return isValidPublishDate(candidate) ? candidate : '';
+      }
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        if (value < 30000 || value > 80000) return '';
+        const parsed = XLSX.SSF.parse_date_code(value);
+        if (!parsed || !parsed.y || !parsed.m || !parsed.d) return '';
+        const candidate = `${parsed.y}-${String(parsed.m).padStart(2, '0')}-${String(parsed.d).padStart(2, '0')}`;
+        return isValidPublishDate(candidate) ? candidate : '';
+      }
+      const text = normalizeText(value);
+      if (!text) return '';
+      const patterns = [
+        /^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?$/,
+        /^(\d{4})年(\d{1,2})月(\d{1,2})日(?:\s*\d{1,2}:\d{2}(?::\d{2})?)?$/,
+        /^(\d{4})(\d{2})(\d{2})$/
+      ];
+      for (const pattern of patterns) {
+        const match = text.match(pattern);
+        if (!match) continue;
+        const candidate = `${match[1]}-${String(match[2]).padStart(2, '0')}-${String(match[3]).padStart(2, '0')}`;
+        return isValidPublishDate(candidate) ? candidate : '';
+      }
+      return '';
+    }
+
+    function isValidPublishDate(value) {
+      const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!match) return false;
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      const day = Number(match[3]);
+      if (year < 2000 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) return false;
+      const date = new Date(Date.UTC(year, month - 1, day));
+      return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+    }
+
     function parseNumber(value) {
       const text = normalizeText(value).replace(/,/g, '');
       if (!text) return null;
@@ -1990,6 +1975,7 @@
       const contents = [];
       const rawRows = [];
       const trendMetrics = { views: [], likesRate: [], favoritesRate: [], completionRate: [] };
+      const trendDates = [];
       let totalViews = 0;
       let totalLikes = 0;
       let totalFavorites = 0;
@@ -2004,14 +1990,14 @@
       dataRows.slice(0, 200).forEach((row, index) => {
         const cells = row.map(normalizeText);
         const title = cells[titleIdx] || cells[0] || `${fileName} 第 ${index + 1} 行`;
-        const publishDate = cells[dateIdx] || cells.find(cell => /\d{4}-\d{1,2}-\d{1,2}/.test(cell)) || '';
-        const views = parseNumber(cells[viewsIdx]) ?? parseNumber(cells.find(cell => /\d/.test(cell) && /[\d,]+/.test(cell))) ?? 0;
-        const likes = parseNumber(cells[likesIdx]) ?? 0;
-        const favorites = parseNumber(cells[favIdx]) ?? 0;
-        const comments = parseNumber(cells[commentsIdx]) ?? 0;
-        const shares = parseNumber(cells[sharesIdx]) ?? 0;
-        const statusRaw = cells[statusIdx] || cells[cells.length - 1] || '';
-        const watch = parseNumber(cells[watchIdx]) ?? null;
+        const publishDate = normalizePublishDate(dateIdx >= 0 ? row[dateIdx] : '') || normalizePublishDate(cells.find((cell, cellIndex) => cellIndex !== titleIdx && normalizePublishDate(cell)) || '');
+        const views = viewsIdx >= 0 ? parseNumber(cells[viewsIdx]) : null;
+        const likes = likesIdx >= 0 ? parseNumber(cells[likesIdx]) : null;
+        const favorites = favIdx >= 0 ? parseNumber(cells[favIdx]) : null;
+        const comments = commentsIdx >= 0 ? parseNumber(cells[commentsIdx]) : null;
+        const shares = sharesIdx >= 0 ? parseNumber(cells[sharesIdx]) : null;
+        const statusRaw = statusIdx >= 0 ? (cells[statusIdx] || '') : '';
+        const watch = watchIdx >= 0 ? parseNumber(cells[watchIdx]) : null;
         const engagementTotal = (favorites || 0) + (likes || 0) + (comments || 0) + (shares || 0);
         const engagementText = [
           likes ? `${formatMetricNumber(likes)}赞` : '',
@@ -2026,6 +2012,7 @@
         trendMetrics.likesRate.push(views ? (likes / views * 100) : 0);
         trendMetrics.favoritesRate.push(views ? (favorites / views * 100) : 0);
         trendMetrics.completionRate.push(watch !== null ? (watch <= 1 ? watch * 100 : watch) : null);
+        trendDates.push(publishDate || '');
         if (isHot) hotCount += 1;
         totalViews += views || 0;
         totalLikes += likes || 0;
@@ -2075,16 +2062,20 @@
       }
 
       const kpisExtra = [
-        { label: '内容条数', value: String(rowCount), hint: `${profile.label}字段口径` },
-        { label: '总浏览量', value: formatMetricNumber(totalViews), hint: '按平台口径' },
-        { label: '总互动量', value: formatMetricNumber(engagementTotal), hint: '点赞 / 收藏 / 评论 / 转发' },
-        { label: '爆款数', value: String(hotCount), hint: `阈值 ${threshold.views}/${threshold.engagement}` }
-      ];
+        rowCount > 0 ? { label: '内容条数', value: String(rowCount), hint: `${profile.label}字段口径` } : null,
+        totalViews > 0 ? { label: profile.label === '微信公众号' ? '总阅读量' : profile.label === '小红书' ? '总曝光量' : profile.label === '抖音' ? '总播放量' : '总浏览量', value: formatMetricNumber(totalViews), hint: '按平台口径' } : null,
+        engagementTotal > 0 ? { label: '总互动量', value: formatMetricNumber(engagementTotal), hint: '点赞 / 收藏 / 评论 / 转发' } : null,
+        hotCount > 0 ? { label: '爆款数', value: String(hotCount), hint: `阈值 ${threshold.views}/${threshold.engagement}` } : null,
+        totalViews > 0 && totalLikes > 0 ? { label: '点赞率', value: `${(totalLikes / totalViews * 100).toFixed(2)}%`, hint: '总点赞 ÷ 总浏览' } : null,
+        totalViews > 0 && totalFavorites > 0 ? { label: profile.label === '微信公众号' ? '收藏/在看率' : '收藏率', value: `${(totalFavorites / totalViews * 100).toFixed(2)}%`, hint: '总收藏 ÷ 总浏览' } : null,
+        trendMetrics.completionRate.some(value => value !== null) ? { label: profile.label === '微信公众号' ? '完读率' : '完播率', value: `${(trendMetrics.completionRate.filter(value => value !== null).reduce((sum, value) => sum + value, 0) / trendMetrics.completionRate.filter(value => value !== null).length).toFixed(2)}%`, hint: '后台字段平均值' } : null
+      ].filter(Boolean);
 
       return {
         contents,
         rawRows,
         trendMetrics,
+        trendDates,
         stats: {
           rowCount,
           totalViews,
@@ -2135,16 +2126,7 @@
     }
 
     function formatPublishDate(value) {
-      const text = normalizeText(value);
-      if (!text) return null;
-      const iso = text.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
-      if (iso) {
-        const [, y, m, d] = iso;
-        return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      }
-      const cn = text.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
-      if (cn) return `${cn[1]}-${String(cn[2]).padStart(2, '0')}-${String(cn[3]).padStart(2, '0')}`;
-      return null;
+      return normalizePublishDate(value) || null;
     }
 
     async function hashUploadFile(file) {
@@ -2192,7 +2174,7 @@
         const contents = summary.contents;
         const now = new Date().toISOString();
         const importedAt = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-        const noteText = note || desc || '手动上传测试';
+        const noteText = note || desc || '';
         const fileHash = await hashUploadFile(file);
 
         const importRow = [
@@ -2224,21 +2206,8 @@
         platform.month = summary.month;
         platform.conversion = summary.conversion;
         platform.trendMetrics = summary.trendMetrics;
+        platform.trendDates = summary.trendDates;
         platform.selectedTrendMetric = 'views';
-        platform.lastImport = {
-          file: file.name,
-          operator,
-          importedAt,
-          stats: summary.stats,
-          note: noteText
-        };
-        platform.spark = summary.stats.rowCount
-          ? Array.from({ length: Math.min(8, summary.stats.rowCount) }, (_, i) => {
-              const base = summary.stats.totalViews || 1;
-              const ratio = Math.max(0.3, Math.min(1.8, (summary.stats.avgViews || 0) / (base / summary.stats.rowCount || 1)));
-              return Math.round((summary.stats.avgViews || 60) * (0.75 + i * 0.06) * ratio / 10) * 10;
-            })
-          : platform.spark;
         state.platform = platform.id;
         state.operator = operator;
         state.dataSource = 'uploaded';
