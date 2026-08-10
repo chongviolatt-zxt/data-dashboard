@@ -6,6 +6,7 @@
   <title>社交平台数据看板</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <style>
     :root {
       --bg: #f7f5f0;
@@ -698,8 +699,6 @@
         </label>
         <button type="button" class="btn soft" id="goHomeBtn" onclick="setView('home')">主页</button>
         <button type="button" class="btn" id="syncCloudBtn" onclick="syncFromCloud()">从云端加载</button>
-        <button type="button" class="btn" id="seedPlatformsBtn" onclick="seedSamplePlatforms()">初始化示例平台</button>
-        <button type="button" class="btn" id="saveCloudBtn" onclick="saveCurrentToCloud()">保存到云端</button>
         <button type="button" class="btn" id="openUploadBtn" onclick="openModal('uploadModal')">上传数据</button>
         <button type="button" class="btn" id="openAddPlatformBtn" onclick="openModal('addPlatformModal')">新增平台</button>
         <button type="button" class="btn primary" id="switchViewBtn" onclick="toggleMainView()">进入平台页</button>
@@ -968,22 +967,23 @@
             <input id="uploadOperator" />
           </div>
           <div class="form-field">
-            <label>文件名</label>
-            <input value="example_2026_08.xlsx" />
+            <label>上传文件</label>
+            <input id="uploadFile" type="file" accept=".csv,.xlsx,.xls" />
           </div>
           <div class="form-field">
             <label>口径备注</label>
-            <input value="近 30 天官方后台导出" />
+            <input id="uploadNote" value="近 30 天官方后台导出" />
           </div>
           <div class="form-field" style="grid-column: 1 / -1;">
             <label>上传说明</label>
-            <textarea>导入后将写入云端，并自动生成导入记录。</textarea>
+            <textarea id="uploadDesc">导入后将写入云端，并自动生成导入记录。</textarea>
           </div>
         </div>
+        <div class="empty" id="uploadHint" style="margin-top:12px;">请选择 csv / xlsx 文件，系统会先把文件名和导入记录写进云端，再尽量解析前几条内容。</div>
       </div>
       <div class="modal-foot">
-        <button class="btn">取消</button>
-        <button class="btn primary">确认上传</button>
+        <button class="btn" type="button" onclick="closeModal('uploadModal')">取消</button>
+        <button class="btn primary" type="button" onclick="handleUpload()">确认上传</button>
       </div>
     </div>
   </div>
@@ -1124,24 +1124,10 @@
           { label: '评论率', value: '1.2%', hint: '近 30 天' },
           { label: '线索数', value: '86', hint: '业务结果' },
         ],
-        contents: [
-          ['如何把短视频接进私域', '2026-08-01', '12,480', '824 / 316', '爆款'],
-          ['视频号日更复盘', '2026-08-03', '6,230', '312 / 128', '观察'],
-          ['直播切片怎么做', '2026-08-05', '4,980', '201 / 88', '待优化']
-        ],
-        imports: [
-          ['15:42', 'wechat_video_aug.xlsx', '张三', '近 30 天口径', '成功'],
-          ['11:06', 'wechat_video_jul.xlsx', '王五', '补录历史数据', '成功']
-        ],
-        audits: [
-          ['15:47', '删除', '重复导入批次', '张三', '口径修正'],
-          ['15:10', '修改', '标题字段', '李四', '统一命名']
-        ],
-        activities: [
-          ['上传了近 30 天数据', '张三 · 15:42'],
-          ['删除重复批次', '张三 · 15:47'],
-          ['更新平台标签', '李四 · 15:10']
-        ],
+        contents: [],
+        imports: [],
+        audits: [],
+        activities: [],
         week: '本周视频号整体浏览增长 18%，其中“私域承接”类内容表现最好。建议继续复用强 CTA 脚本，压缩纯介绍类内容。',
         month: '本月视频号在业务结果上更强，但完播率还有提升空间。下个月重点抓首 3 秒和结尾引导。',
         conversion: '当前线索数 86，主要来自内容末尾引导和直播切片。若要继续放大，需要把内容与企微承接链路进一步打通。',
@@ -1178,24 +1164,10 @@
           { label: '评论率', value: '0.8%', hint: '近 30 天' },
           { label: '留资数', value: '43', hint: '业务结果' },
         ],
-        contents: [
-          ['搭建看板的 3 个坑', '2026-08-02', '9,480', '522 / 438', '爆款'],
-          ['商业复盘模板', '2026-08-04', '5,020', '204 / 311', '观察'],
-          ['平台内容归档方法', '2026-08-06', '3,640', '118 / 176', '待优化']
-        ],
-        imports: [
-          ['14:20', 'wechat_mp_aug.xlsx', '李四', '文章数据补录', '成功'],
-          ['09:55', 'wechat_mp_jul.csv', '张三', '历史整理', '成功']
-        ],
-        audits: [
-          ['14:30', '修改', '专栏名称', '李四', '统一命名'],
-          ['10:10', '删除', '测试文章', '张三', '清理无效数据']
-        ],
-        activities: [
-          ['导入文章数据', '李四 · 14:20'],
-          ['清理测试内容', '张三 · 10:10'],
-          ['更新专栏命名', '李四 · 14:30']
-        ],
+        contents: [],
+        imports: [],
+        audits: [],
+        activities: [],
         week: '本周公众号的收藏率表现不错，说明长内容在沉淀价值上更强。下一步可以继续强化系列化写法。',
         month: '月度看公众号更适合作为知识库和长线资产，流量不一定最大，但留存价值更稳。',
         conversion: '留资数 43，说明内容有一定转化能力，但仍需要更明确的 CTA 和路径承接。',
@@ -1232,24 +1204,10 @@
           { label: '评论率', value: '1.6%', hint: '近 30 天' },
           { label: '咨询数', value: '58', hint: '业务结果' },
         ],
-        contents: [
-          ['新手怎么选看板工具', '2026-08-01', '14,240', '1,020 / 1,104', '爆款'],
-          ['一张图讲清数据结构', '2026-08-04', '7,220', '440 / 682', '爆款'],
-          ['运营复盘怎么写', '2026-08-06', '4,010', '221 / 334', '观察']
-        ],
-        imports: [
-          ['16:05', 'xhs_aug.xlsx', '王五', '近 30 天数据', '成功'],
-          ['12:14', 'xhs_history.csv', '张三', '历史补录', '成功']
-        ],
-        audits: [
-          ['16:12', '删除', '重复封面稿', '王五', '去重'],
-          ['12:20', '修改', '标题标签', '张三', '统一口径']
-        ],
-        activities: [
-          ['导入近 30 天数据', '王五 · 16:05'],
-          ['去重测试文件', '王五 · 16:12'],
-          ['更新标题标签', '张三 · 12:20']
-        ],
+        contents: [],
+        imports: [],
+        audits: [],
+        activities: [],
         week: '小红书本周爆款数最多，说明标题和封面策略已经开始起作用。继续围绕用户问题写，会更稳。',
         month: '月度维度看，小红书是最适合冲曝光和收藏的阵地，后面可以重点做系列化选题。',
         conversion: '咨询数 58，说明内容已经有转化苗头，但还可以更明确地把用户引到下一步动作。',
@@ -1286,24 +1244,10 @@
           { label: '评论率', value: '2.3%', hint: '近 30 天' },
           { label: '线索数', value: '102', hint: '业务结果' },
         ],
-        contents: [
-          ['3 分钟看懂数据看板', '2026-08-02', '18,720', '1,240 / 354', '爆款'],
-          ['从 0 到 1 搭系统', '2026-08-03', '8,330', '612 / 220', '爆款'],
-          ['如何做平台复盘', '2026-08-06', '5,100', '314 / 148', '观察']
-        ],
-        imports: [
-          ['15:42', 'douyin_aug.xlsx', '张三', '近 30 天数据', '成功'],
-          ['09:20', 'douyin_history.csv', '李四', '历史整理', '成功']
-        ],
-        audits: [
-          ['15:47', '删除', '重复批次', '张三', '口径修正'],
-          ['10:06', '修改', '标签字段', '李四', '统一格式']
-        ],
-        activities: [
-          ['导入近 30 天数据', '张三 · 15:42'],
-          ['删除重复批次', '张三 · 15:47'],
-          ['更新标签字段', '李四 · 10:06']
-        ],
+        contents: [],
+        imports: [],
+        audits: [],
+        activities: [],
         week: '抖音的完播率最值得盯，说明短内容结构已经开始稳定。可以继续复用前 3 秒钩子。',
         month: '抖音这个月的转化动作表现不错，但内容节奏还可以更统一。建议把爆款结构做成模板。',
         conversion: '线索数 102，是当前最强的转化平台之一。后面要重点看内容和转化页之间的衔接。',
@@ -1311,12 +1255,7 @@
       }
     ];
 
-    const homeImportRows = [
-      ['15:42', '抖音', 'douyin_aug.xlsx', '张三', '成功'],
-      ['16:05', '小红书', 'xhs_aug.xlsx', '王五', '成功'],
-      ['14:20', '公众号', 'wechat_mp_aug.xlsx', '李四', '成功'],
-      ['11:06', '视频号', 'wechat_video_aug.xlsx', '张三', '成功']
-    ];
+    const homeImportRows = [];
 
     function normalizePlatformCode(input) {
       return String(input || '').trim().toLowerCase();
@@ -1462,9 +1401,9 @@
       cards.querySelectorAll('[data-platform]').forEach(btn => {
         btn.addEventListener('click', () => setPlatform(btn.dataset.platform));
       });
-      el('homeImportTable').innerHTML = homeImportRows.map(r => `
+      el('homeImportTable').innerHTML = homeImportRows.length ? homeImportRows.map(r => `
         <tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td><span class="status">${r[4]}</span></td></tr>
-      `).join('');
+      `).join('') : '<tr><td colspan="5"><div class="empty">暂无默认导入记录，等你上传第一份数据</div></td></tr>';
     }
 
     function drawChart(platform) {
@@ -1495,13 +1434,13 @@
       const chips = Array.isArray(p.chips) ? p.chips : [];
       const kpis = [...(Array.isArray(p.kpis) ? p.kpis : []), ...(Array.isArray(p.kpisExtra) ? p.kpisExtra : [])];
       const notes = Array.isArray(p.notes) ? p.notes : [];
-      const contents = Array.isArray(p.contents) ? p.contents : [];
-      const imports = Array.isArray(p.imports) ? p.imports : [];
-      const audits = Array.isArray(p.audits) ? p.audits : [];
+      const contents = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.contents) ? p.contents : [];
+      const imports = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.imports) ? p.imports : [];
+      const audits = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.audits) ? p.audits : [];
       const topics = Array.isArray(p.topics) ? p.topics : [];
       const hots = Array.isArray(p.hots) ? p.hots : [];
       const suggestions = Array.isArray(p.suggestions) ? p.suggestions : [];
-      const activities = Array.isArray(p.activities) ? p.activities : [];
+      const activities = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.activities) ? p.activities : [];
       const spark = Array.isArray(p.spark) && p.spark.length ? p.spark : [60, 72, 66, 88, 94, 108, 100, 118];
       el('platformText').textContent = p.name || '未命名平台';
       el('platformHeader').textContent = `${p.name || '未命名平台'} · 平台工作台`;
@@ -1553,8 +1492,8 @@
       el('uploadOperator').value = state.operator;
       el('operatorEcho').textContent = state.operator;
       el('operatorChip').textContent = state.operator;
-      el('sourceText').textContent = state.dataSource === 'supabase' ? 'Supabase 云端数据' : '示例数据兜底，可切 Supabase';
-      el('dataSourceBadge').textContent = state.dataSource === 'supabase' ? 'GitHub Pages 主页面 · Supabase Connected' : 'GitHub Pages 主页面 · Supabase Ready';
+      el('sourceText').textContent = state.dataSource === 'supabase' ? 'Supabase 云端数据' : state.dataSource === 'uploaded' ? '已上传测试数据' : '干净底座，等你上传第一份测试数据';
+      el('dataSourceBadge').textContent = state.dataSource === 'supabase' ? 'GitHub Pages 主页面 · Supabase Connected' : state.dataSource === 'uploaded' ? 'GitHub Pages 主页面 · Uploaded' : 'GitHub Pages 主页面 · Clean Base';
     }
 
     function renderAll() {
@@ -1562,36 +1501,7 @@
       renderPlatformList();
       renderPlatform();
       if (state.dataSource !== 'supabase') {
-        el('sourceText').textContent = '示例数据兜底，可切 Supabase';
-      }
-    }
-
-    async function seedSamplePlatforms() {
-      if (!supabaseClient) {
-        state.dataSource = 'sample';
-        state.platform = 'wechat_video';
-        renderAll();
-        setView('home');
-        el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · 示例平台已初始化';
-        el('sourceText').textContent = '已初始化微信视频号 / 公众号 / 抖音 / 小红书';
-        return;
-      }
-      try {
-        el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · 正在初始化示例平台到云端';
-        el('sourceText').textContent = '正在清空并写入示例平台数据...';
-        await saveCurrentToCloud();
-        state.dataSource = 'supabase';
-        state.platform = 'wechat_video';
-        renderAll();
-        setView('home');
-        el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · 示例平台已写入云端';
-        el('sourceText').textContent = '已写入微信视频号 / 公众号 / 抖音 / 小红书';
-        await syncFromCloud();
-      } catch (err) {
-        state.dataSource = 'sample';
-        renderAll();
-        el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · 初始化失败';
-        el('sourceText').textContent = `写入云端失败：${err.message}`;
+        el('sourceText').textContent = state.dataSource === 'uploaded' ? '已上传测试数据' : '干净底座，等你上传第一份测试数据';
       }
     }
 
@@ -1671,8 +1581,123 @@
       } catch (err) {
         state.dataSource = 'sample';
         renderAll();
-        el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · Supabase Ready';
-        el('sourceText').textContent = `云端读取失败，已回退示例数据：${err.message}`;
+        el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · Clean Base';
+        el('sourceText').textContent = `云端读取失败，已回到干净底座：${err.message}`;
+      }
+    }
+
+    function detectHeaderRow(rows) {
+      if (!rows.length) return false;
+      const joined = rows[0].map(cell => String(cell || '').trim()).join(' ').toLowerCase();
+      return ['标题', 'title', '名称', '日期', '时间', '浏览', '阅读', '曝光', '点赞', '评论', '收藏'].some(word => joined.includes(word));
+    }
+
+    function rowsToContentPayload(rows, fileName, platformId, operator) {
+      const cleaned = rows.filter(row => Array.isArray(row) && row.some(cell => String(cell ?? '').trim() !== ''));
+      const dataRows = detectHeaderRow(cleaned) ? cleaned.slice(1) : cleaned;
+      return dataRows.slice(0, 200).map((row, index) => {
+        const cells = row.map(cell => String(cell ?? '').trim());
+        const title = cells[0] || `${fileName} 第 ${index + 1} 行`;
+        const publishDate = cells.find((cell, i) => i > 0 && /\d{4}-\d{1,2}-\d{1,2}/.test(cell)) || cells[1] || '';
+        const viewsCell = cells.find((cell) => /\d/.test(cell) && /[\d,]+/.test(cell)) || cells[2] || '';
+        const engagementText = [cells[3], cells[4]].filter(Boolean).join(' / ') || cells.slice(3, 5).filter(Boolean).join(' / ') || '';
+        const status = cells[cells.length - 1] || '导入';
+        return [title, publishDate, viewsCell, engagementText, status];
+      });
+    }
+
+    async function readUploadRows(file) {
+      const name = file.name.toLowerCase();
+      if (name.endsWith('.csv')) {
+        const text = await file.text();
+        const wb = XLSX.read(text, { type: 'string' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      }
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    }
+
+    async function handleUpload() {
+      const fileEl = el('uploadFile');
+      const platformId = el('uploadPlatform').value;
+      const operator = (el('uploadOperator').value || state.operator || '未命名').trim();
+      const note = (el('uploadNote').value || '').trim();
+      const desc = (el('uploadDesc').value || '').trim();
+      const hint = el('uploadHint');
+      const file = fileEl && fileEl.files && fileEl.files[0];
+      if (!file) {
+        hint.textContent = '先选一个 csv / xlsx / xls 文件，我们再帮你入库。';
+        return;
+      }
+      const platform = platforms.find(p => p.id === platformId) || platforms[0];
+      try {
+        hint.textContent = `正在读取 ${file.name}，稍等一下...`;
+        const rows = await readUploadRows(file);
+        const contents = rowsToContentPayload(rows, file.name, platform.id, operator);
+        const now = new Date().toISOString();
+        const importRow = [new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }), file.name, operator, note || desc || '手动上传测试', '成功'];
+        const auditRow = [new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }), '上传', file.name, operator, desc || note || '手动上传测试'];
+
+        platform.contents = contents;
+        platform.imports = [importRow];
+        platform.audits = [auditRow, ...(Array.isArray(platform.audits) ? platform.audits : [])].slice(0, 20);
+        platform.activities = [[`上传了 ${file.name}`, `${operator} · ${new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`]];
+        state.platform = platform.id;
+        state.operator = operator;
+        state.dataSource = 'uploaded';
+        renderAll();
+
+        if (supabaseClient) {
+          await Promise.all([
+            supabaseClient.from(TABLES.contents).delete().eq('platform_code', platform.id),
+            supabaseClient.from(TABLES.importJobs).delete().eq('platform_code', platform.id),
+            supabaseClient.from(TABLES.auditLogs).delete().eq('platform_code', platform.id)
+          ]);
+          if (contents.length) {
+            const contentRows = contents.map((row, index) => ({
+              platform_code: platform.id,
+              title: row[0],
+              publish_date: row[1],
+              views: Number(String(row[2] || '').replace(/,/g, '')) || 0,
+              engagement_text: row[3] || '',
+              status: row[4] || '导入',
+              sort_order: index + 1,
+              updated_at: now,
+              updated_by: operator
+            }));
+            const importRows = [{
+              platform_code: platform.id,
+              imported_at: importRow[0],
+              source_file: file.name,
+              updated_by: operator,
+              note: note || desc || '手动上传测试',
+              result: '成功',
+              created_at: now
+            }];
+            const auditRows = [{
+              platform_code: platform.id,
+              action_at: auditRow[0],
+              action_type: '上传',
+              action_target: file.name,
+              updated_by: operator,
+              note: desc || note || '手动上传测试',
+              created_at: now
+            }];
+            await Promise.all([
+              supabaseClient.from(TABLES.contents).insert(contentRows),
+              supabaseClient.from(TABLES.importJobs).insert(importRows),
+              supabaseClient.from(TABLES.auditLogs).insert(auditRows)
+            ]);
+          }
+        }
+        hint.textContent = `已接收 ${file.name}，${contents.length} 行测试数据已写入${supabaseClient ? '云端和' : ''}当前页面。`;
+        closeModal('uploadModal');
+      } catch (err) {
+        console.error(err);
+        hint.textContent = `上传失败：${err.message}`;
       }
     }
 
@@ -1752,15 +1777,16 @@
     window.closeModal = closeModal;
     window.syncFromCloud = syncFromCloud;
     window.saveCurrentToCloud = saveCurrentToCloud;
+    window.handleUpload = handleUpload;
 
     try {
       renderAll();
       setView('home');
       el('dataSourceBadge').textContent = getSupabaseModeText();
-      el('sourceText').textContent = supabaseClient ? '示例数据兜底，可切 Supabase' : '示例数据兜底，可切 Supabase';
+      el('sourceText').textContent = supabaseClient ? '干净底座，等你上传第一份测试数据' : '干净底座，等你上传第一份测试数据';
 
       if (supabaseClient) {
-        syncFromCloud();
+        el('sourceText').textContent = '已连接 Supabase，点“从云端加载”可手动同步';
       }
     } catch (err) {
       console.error('Dashboard init failed:', err);
