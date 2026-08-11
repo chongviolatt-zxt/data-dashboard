@@ -594,9 +594,12 @@
     .platform-arrow { color: #a7b0be; font-size: 17px; transition: transform .18s ease; }
     .sidebar .item:hover .platform-arrow, .sidebar .item.active .platform-arrow { color: var(--primary); transform: translateX(2px); }
     .platform-nav-only { grid-template-columns: 1fr; }
-    .platform-nav-only .sidebar { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
-    .platform-nav-only .platform-switcher-head { grid-column: 1 / -1; }
-    .platform-overview-only[hidden] { display: none !important; }
+    .platform-nav-only .sidebar { display: flex; gap: 8px; overflow-x: auto; padding: 9px; }
+    .platform-nav-only .platform-switcher-head { display: none; }
+    .platform-nav-only .sidebar .item { min-width: 156px; margin: 0; padding: 9px 10px; }
+    .platform-nav-only .platform-category, .platform-nav-only .platform-meta { display: none; }
+    .platform-nav-only .platform-mark { width: 30px; height: 30px; border-radius: 9px; }
+    .platform-overview-only[hidden], .platform-global-overview[hidden] { display: none !important; }
     .chart-card, .content-area {
       border: 1px solid var(--line);
       border-radius: 18px;
@@ -1320,7 +1323,10 @@
         { id: 'wechat_video', name: '微信视频号', short: '视频号', category: '私域 / 直播 / 触达' },
         { id: 'wechat_mp', name: '微信公众号', short: '公众号', category: '文章 / 搜索 / 长内容' },
         { id: 'xhs', name: '小红书', short: '小红书', category: '种草 / 搜索 / 爆款' },
-        { id: 'douyin', name: '抖音', short: '抖音', category: '短视频 / 完播 / 转化' }
+        { id: 'douyin', name: '抖音', short: '抖音', category: '短视频 / 完播 / 转化' },
+        { id: 'bilibili', name: 'Bilibili', short: 'B站', category: '长视频 / 社区 / 搜索' },
+        { id: 'linkedin', name: 'LinkedIn', short: '领英', category: '职场 / 品牌 / 海外' },
+        { id: 'csdn', name: 'CSDN', short: 'CSDN', category: '技术 / 搜索 / 内容沉淀' }
       ];
       const cards = document.getElementById('platformCards');
       if (cards && !cards.children.length) {
@@ -1427,6 +1433,36 @@
         short: '抖音',
         category: '短视频 / 完播 / 转化',
         color: 'cyan',
+        kpis: [], chips: [], notes: [], topics: [], hots: [], suggestions: [], kpisExtra: [],
+        contents: [], imports: [], audits: [], activities: [], snapshots: [],
+        week: '', month: '', conversion: '', spark: [], trendMetrics: {}, trendDates: []
+      },
+      {
+        id: 'bilibili',
+        name: 'Bilibili',
+        short: 'B站',
+        category: '长视频 / 社区 / 搜索',
+        color: 'cyan',
+        kpis: [], chips: [], notes: [], topics: [], hots: [], suggestions: [], kpisExtra: [],
+        contents: [], imports: [], audits: [], activities: [], snapshots: [],
+        week: '', month: '', conversion: '', spark: [], trendMetrics: {}, trendDates: []
+      },
+      {
+        id: 'linkedin',
+        name: 'LinkedIn',
+        short: '领英',
+        category: '职场 / 品牌 / 海外',
+        color: 'primary',
+        kpis: [], chips: [], notes: [], topics: [], hots: [], suggestions: [], kpisExtra: [],
+        contents: [], imports: [], audits: [], activities: [], snapshots: [],
+        week: '', month: '', conversion: '', spark: [], trendMetrics: {}, trendDates: []
+      },
+      {
+        id: 'csdn',
+        name: 'CSDN',
+        short: 'CSDN',
+        category: '技术 / 搜索 / 内容沉淀',
+        color: 'amber',
         kpis: [], chips: [], notes: [], topics: [], hots: [], suggestions: [], kpisExtra: [],
         contents: [], imports: [], audits: [], activities: [], snapshots: [],
         week: '', month: '', conversion: '', spark: [], trendMetrics: {}, trendDates: []
@@ -2147,9 +2183,15 @@
       el('overviewSnapshotCount').textContent = String(stats.snapshots.length);
       el('overviewLatestImport').textContent = latestImportText;
       el('overviewBasis').textContent = stats.contents.length ? `当前平台共 ${stats.contents.length} 条去重内容，其中 ${stats.datedContents.length} 条有有效发布日期；${stats.validViewCount ? `已识别 ${stats.validViewCount} 条浏览字段，合计 ${formatMetricNumber(stats.totalViews)}。` : '当前文件未识别到浏览字段。'} 最近导入文件：${stats.latestImport ? stats.latestImport[1] : '暂无记录'}。` : '暂无当前平台数据，上传官方后台文件后才会生成概览。';
-      el('contentOpsSummary').textContent = stats.contents.length ? `${stats.contents.length} 条内容 · ${stats.datedContents.length} 条可做日期分析` : '暂无内容数据';
-      el('contentOpsHotSummary').textContent = stats.hotCount ? `${stats.hotCount} 条爆款` : '暂无爆款数据';
-      el('contentOpsGrowthSummary').textContent = stats.growthRows.length ? `${stats.growthRows.length} 条内容有增长记录` : '暂无多次观测增长';
+      if (!stats.contents.length) {
+        el('contentOpsSummary').textContent = '暂无内容数据';
+        el('contentOpsHotSummary').textContent = '暂无爆款数据';
+        el('contentOpsGrowthSummary').textContent = '暂无增长数据';
+      } else {
+        el('contentOpsSummary').textContent = `${stats.contents.length} 条内容 · ${stats.datedContents.length} 条可做日期分析`;
+        el('contentOpsHotSummary').textContent = stats.hotCount ? `${stats.hotCount} 条爆款` : '暂无爆款数据';
+        el('contentOpsGrowthSummary').textContent = stats.growthRows.length ? `${stats.growthRows.length} 条内容有增长记录` : '暂无多次观测增长';
+      }
       el('logsImportCount').textContent = String(stats.imports.length);
       el('logsAuditCount').textContent = String(Array.isArray(platform.audits) ? platform.audits.length : 0);
       el('logsSnapshotCount').textContent = String(stats.snapshots.length);
@@ -2252,7 +2294,7 @@
     }
 
     function getPlatformMark(p) {
-      const marks = { wechat_video: '视', wechat_mp: '文', xhs: '红', douyin: '抖' };
+      const marks = { wechat_video: '视', wechat_mp: '文', xhs: '红', douyin: '抖', bilibili: 'B', linkedin: '领', csdn: 'C' };
       return marks[p.id] || (p.short || p.name || '平').slice(0, 1);
     }
 
@@ -2322,7 +2364,10 @@
         state.statusMessage = '';
         renderRuntimeStatus();
         const bundle = await loadCloudStructure();
-        const mergedPlatforms = (bundle.platforms || []).map(platform => {
+        const cloudById = new Map((bundle.platforms || []).map(p => [p.id, p]));
+        const mergedPlatforms = platforms.map(local => {
+          const platform = cloudById.get(local.id);
+          if (!platform) return local;
           const profileLabel = getFieldProfile(platform.id).label;
           const platformImports = (bundle.imports || []).filter(row => row.platform_code === platform.id);
           const platformSnapshots = (bundle.snapshots || []).filter(row => row.platform_code === platform.id);
@@ -2397,6 +2442,21 @@
     }
 
     const PLATFORM_FIELD_PROFILES = {
+      bilibili: {
+        label: 'Bilibili',
+        keywords: { title: ['标题', '视频标题', '作品标题', 'title'], date: ['发布时间', '发布日期', '日期', 'publish_time'], views: ['播放量', '播放', '观看数', 'view'], likes: ['点赞', '喜欢', 'like'], favorites: ['收藏', 'favorite'], comments: ['评论', 'comment'], shares: ['分享', 'share'], completionRate: ['完播率', 'completion'] },
+        hotThreshold: { views: 1000, engagement: 100 }
+      },
+      linkedin: {
+        label: 'LinkedIn',
+        keywords: { title: ['标题', '内容', '帖子', 'title'], date: ['发布时间', '发布日期', '日期', 'publish_time'], views: ['展示次数', '浏览量', '曝光量', 'impressions', 'views'], likes: ['点赞', 'reactions', 'like'], favorites: ['收藏', 'save'], comments: ['评论', 'comment'], shares: ['分享', 'share'], completionRate: [] },
+        hotThreshold: { views: 1000, engagement: 50 }
+      },
+      csdn: {
+        label: 'CSDN',
+        keywords: { title: ['标题', '文章标题', 'title'], date: ['发布时间', '发布日期', '日期', 'publish_time'], views: ['阅读数', '浏览量', '访问量', 'views'], likes: ['点赞', 'like'], favorites: ['收藏', 'favorite'], comments: ['评论', 'comment'], shares: ['分享', 'share'], completionRate: [] },
+        hotThreshold: { views: 1000, engagement: 50 }
+      },
       wechat_video: {
         label: '微信视频号',
         keywords: {
