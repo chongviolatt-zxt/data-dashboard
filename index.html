@@ -599,6 +599,11 @@
     .platform-nav-only .sidebar .item { min-width: 156px; margin: 0; padding: 9px 10px; }
     .platform-nav-only .platform-category, .platform-nav-only .platform-meta { display: none; }
     .platform-nav-only .platform-mark { width: 30px; height: 30px; border-radius: 9px; }
+    .platform-edit-btn {
+      border: 0; background: transparent; color: var(--muted-2); padding: 4px 5px;
+      border-radius: 7px; cursor: pointer; font-size: 11px; opacity: .72;
+    }
+    .platform-edit-btn:hover { color: var(--primary); background: rgba(47,111,94,.09); opacity: 1; }
     .platform-overview-only[hidden], .platform-global-overview[hidden] { display: none !important; }
     .chart-card, .content-area {
       border: 1px solid var(--line);
@@ -1317,6 +1322,30 @@
     </div>
   </div>
 
+  <div class="modal-mask" id="editPlatformModal">
+    <div class="modal">
+      <div class="modal-head">
+        <div><strong>编辑平台入口</strong><p class="chart-caption" style="margin:4px 0 0;">修改平台介绍、颜色和显示图标，不影响已上传的数据。</p></div>
+        <button type="button" class="btn" onclick="closeModal('editPlatformModal')">关闭</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-field"><label>平台名称</label><input id="editPlatformName" /></div>
+          <div class="form-field"><label>平台简称</label><input id="editPlatformShort" /></div>
+          <div class="form-field" style="grid-column:1/-1;"><label>平台介绍</label><textarea id="editPlatformCategory" placeholder="例如：长视频 / 搜索 / 品牌内容"></textarea></div>
+          <div class="form-field"><label>显示图标</label><input id="editPlatformIcon" maxlength="4" placeholder="文字或 Emoji，例如 B、领、📺" /></div>
+          <div class="form-field"><label>图标颜色</label><input id="editPlatformColor" type="color" value="#2f6f5e" /></div>
+        </div>
+        <input id="editPlatformCode" type="hidden" />
+        <div class="empty" id="editPlatformHint" style="margin-top:12px;">图标建议使用 1–2 个汉字、英文字母或 Emoji；颜色可自由选择。</div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" type="button" onclick="closeModal('editPlatformModal')">取消</button>
+        <button class="btn primary" type="button" onclick="handleEditPlatform()">保存修改</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     window.addEventListener('DOMContentLoaded', () => {
       const fallbackPlatforms = [
@@ -1481,6 +1510,9 @@
         name: p.name,
         short_name: p.short,
         category: p.category,
+        description: p.category || '',
+        color: p.color || 'primary',
+        icon: p.icon || '',
         owner: state.operator,
         updated_at: new Date().toISOString(),
         updated_by: state.operator
@@ -1534,8 +1566,10 @@
         id: normalizePlatformCode(row.code || row.id),
         name: row.name || row.platform_name || '未命名平台',
         short: row.short_name || row.short || row.name || '平台',
-        category: row.category || '未填写分类',
+        category: row.category || row.description || '未填写分类',
+        description: row.description || row.category || '',
         color: row.color || 'primary',
+        icon: row.icon || '',
         kpis: row.kpis || [],
         chips: row.chips || [],
         notes: row.notes || [],
@@ -1691,6 +1725,8 @@
         short: config.short || config.name,
         category: config.category || '未填写定位',
         color: config.color || 'primary',
+        icon: config.icon || '',
+        description: config.description || config.category || '',
         owner: config.owner || '',
         goal: config.goal || '',
         source: config.source || '',
@@ -1736,6 +1772,48 @@
     }
 
 
+    function openEditPlatform(id) {
+      const platform = platforms.find(item => item.id === id);
+      if (!platform) return;
+      el('editPlatformCode').value = platform.id;
+      el('editPlatformName').value = platform.name || '';
+      el('editPlatformShort').value = platform.short || '';
+      el('editPlatformCategory').value = platform.category || platform.description || '';
+      el('editPlatformIcon').value = platform.icon || getPlatformMark(platform);
+      el('editPlatformColor').value = /^#[0-9a-f]{6}$/i.test(platform.color || '') ? platform.color : '#2f6f5e';
+      el('editPlatformHint').textContent = `正在编辑：${platform.name}（${platform.id}）`;
+      openModal('editPlatformModal');
+    }
+
+    async function handleEditPlatform() {
+      const id = el('editPlatformCode').value;
+      const platform = platforms.find(item => item.id === id);
+      if (!platform) return;
+      const name = el('editPlatformName').value.trim();
+      const short = el('editPlatformShort').value.trim();
+      const category = el('editPlatformCategory').value.trim();
+      const icon = el('editPlatformIcon').value.trim().slice(0, 4);
+      const color = el('editPlatformColor').value;
+      if (!name || !category || !icon) {
+        el('editPlatformHint').textContent = '平台名称、介绍和图标都不能为空。';
+        return;
+      }
+      Object.assign(platform, { name, short: short || name, category, description: category, icon, color });
+      try {
+        if (supabaseClient) {
+          const { error } = await supabaseClient.from(TABLES.platforms).upsert(toDbPlatformRow(platform), { onConflict: 'code' });
+          if (error) throw error;
+          state.dataSource = 'supabase';
+          state.cloudStatus = 'connected';
+        } else {
+          state.dataSource = 'uploaded';
+        }
+        renderAll();
+        closeModal('editPlatformModal');
+      } catch (err) {
+        el('editPlatformHint').textContent = `保存失败：${err.message}`;
+      }
+    }
     function parseDisplayedMetric(value) {
       const text = String(value || '').trim().toLowerCase().replace(/,/g, '');
       const number = Number.parseFloat(text) || 0;
@@ -2294,8 +2372,13 @@
     }
 
     function getPlatformMark(p) {
+      if (p.icon) return p.icon;
       const marks = { wechat_video: '视', wechat_mp: '文', xhs: '红', douyin: '抖', bilibili: 'B', linkedin: '领', csdn: 'C' };
       return marks[p.id] || (p.short || p.name || '平').slice(0, 1);
+    }
+
+    function getPlatformMarkStyle(p) {
+      return /^#[0-9a-f]{6}$/i.test(String(p.color || '')) ? ` style="background:${p.color}"` : '';
     }
 
     function renderPlatformList() {
@@ -2305,12 +2388,13 @@
         const hasData = contentCount > 0;
         return `
           <button type="button" class="menu-item item ${p.id === state.platform ? 'active' : ''}" data-platform-sel="${p.id}" onclick="setPlatform('${p.id}')">
-            <span class="platform-mark ${p.color || 'primary'}">${getPlatformMark(p)}</span>
+            <span class="platform-mark ${p.color || 'primary'}"${getPlatformMarkStyle(p)}>${getPlatformMark(p)}</span>
             <span class="platform-switch-copy">
               <strong>${p.name}</strong>
               <span class="platform-category">${p.category}</span>
               <span class="platform-meta"><i class="platform-status-dot ${hasData ? 'ready' : ''}"></i>${hasData ? `已分析 ${contentCount} 条内容` : '等待上传数据'} · ${importCount} 次导入</span>
             </span>
+            <button type="button" class="platform-edit-btn" title="编辑平台入口" onclick="event.stopPropagation(); openEditPlatform('${p.id}')">编辑</button>
             <span class="platform-arrow">›</span>
           </button>
         `;
@@ -3185,6 +3269,8 @@
     window.saveCurrentToCloud = saveCurrentToCloud;
     window.handleUpload = handleUpload;
     window.handleAddPlatform = handleAddPlatform;
+    window.openEditPlatform = openEditPlatform;
+    window.handleEditPlatform = handleEditPlatform;
 
     try {
       renderAll();
