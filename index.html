@@ -264,6 +264,27 @@
       border-bottom: 1px dashed var(--line-soft);
       font-size: 13px;
       color: #202634;
+      overflow-wrap: anywhere;
+    }
+    .runtime-summary {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.55;
+    }
+    .runtime-actions li.done { opacity: .58; }
+    .runtime-actions li.done::before { background: var(--primary); }
+    .runtime-actions li.current strong { color: var(--primary); }
+    .runtime-actions li.current::before { box-shadow: 0 0 0 4px var(--primary-soft); }
+    .runtime-actions .action-tag {
+      display: inline-flex;
+      margin-left: 6px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-size: 10px;
+      vertical-align: 1px;
     }
     .main {
       margin-top: 18px;
@@ -853,7 +874,7 @@
 
     <section class="hero">
       <div class="card hero-main">
-        <span class="eyebrow" id="dataSourceBadge">数据看板 · 正在检查云端连接</span>
+        <span class="eyebrow" id="dataSourceBadge">数据看板 · 本地页面已就绪</span>
         <h2 class="hero-title">一处查看各平台表现，上传官方后台数据后自动生成分析</h2>
         <p class="lead">
           选择微信视频号、微信公众号、小红书或抖音，上传平台官方后台导出的 CSV / Excel 文件。系统会按不同平台的字段口径识别内容、浏览和互动数据，并保留原始文件名、分析结果、操作人与上传时间。
@@ -870,20 +891,19 @@
       <aside class="card hero-side">
         <div class="side-block">
           <div class="side-title"><i></i> 当前状态</div>
+          <p class="runtime-summary" id="runtimeSummary">正在读取当前页面状态…</p>
           <dl class="kv">
-            <dt>所在页面</dt><dd id="modeText">主页</dd>
+            <dt>所在页面</dt><dd id="modeText">主页 Home</dd>
             <dt>当前平台</dt><dd id="platformText">微信视频号</dd>
             <dt>当前操作者</dt><dd id="operatorEcho">未填写</dd>
-            <dt>数据状态</dt><dd id="sourceText">干净底座，等待上传数据</dd>
+            <dt>数据来源</dt><dd id="sourceText">尚未加载数据</dd>
+            <dt>当前数据量</dt><dd id="dataCountText">0 条内容 · 0 个批次</dd>
+            <dt>最近更新</dt><dd id="lastUpdatedText">暂无记录</dd>
           </dl>
         </div>
         <div class="side-block">
           <div class="side-title"><i></i> 建议操作顺序</div>
-          <ol class="timeline" style="margin-top:4px;">
-            <li><strong>填写操作者</strong><p>用于记录是谁上传和修改了数据。</p></li>
-            <li><strong>选择平台并上传文件</strong><p>使用平台官方后台导出的 CSV / Excel。</p></li>
-            <li><strong>进入平台页查看分析</strong><p>检查指标、内容明细、爆款标签和操作日志。</p></li>
-          </ol>
+          <ol class="timeline runtime-actions" id="runtimeActions" style="margin-top:4px;"></ol>
         </div>
       </aside>
     </section>
@@ -1279,7 +1299,9 @@
       platform: 'wechat_video',
       tab: 'overview',
       operator: '',
-      dataSource: 'clean'
+      dataSource: 'clean',
+      cloudStatus: supabaseClient ? 'ready' : 'unavailable',
+      statusMessage: ''
     };
 
     const platforms = [
@@ -1419,8 +1441,8 @@
       state.view = view;
       sections.home.classList.toggle('active', view === 'home');
       sections.platform.classList.toggle('active', view === 'platform');
-      el('modeText').textContent = view === 'home' ? '首页 Home' : '平台页 Platform';
       el('switchViewBtn').textContent = view === 'home' ? '进入平台页' : '返回首页';
+      renderRuntimeStatus();
     }
 
     function setPlatform(id) {
@@ -1438,6 +1460,86 @@
 
     function getPlatform() {
       return platforms.find(p => p.id === state.platform) || platforms[0];
+    }
+
+    function formatRuntimeTime(value) {
+      if (!value) return '暂无记录';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value);
+      return date.toLocaleString('zh-CN', { hour12: false });
+    }
+
+    function getLatestPlatformUpdate(platform) {
+      const imports = Array.isArray(platform && platform.imports) ? platform.imports : [];
+      const values = imports.map(row => row && row[0]).filter(Boolean);
+      if (!values.length) return '';
+      return values.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+    }
+
+    function renderRuntimeStatus() {
+      const platform = getPlatform() || {};
+      const contents = Array.isArray(platform.contents) ? platform.contents : [];
+      const imports = Array.isArray(platform.imports) ? platform.imports : [];
+      const hasPlatformData = contents.length > 0 || imports.length > 0;
+      const totalContents = platforms.reduce((sum, item) => sum + (Array.isArray(item.contents) ? item.contents.length : 0), 0);
+      const totalImports = platforms.reduce((sum, item) => sum + (Array.isArray(item.imports) ? item.imports.length : 0), 0);
+      const sourceLabel = state.cloudStatus === 'loading'
+        ? '正在从 Supabase 读取数据'
+        : state.cloudStatus === 'error'
+          ? (state.statusMessage || '云端读取失败，保留当前页面数据')
+          : state.dataSource === 'supabase'
+            ? 'Supabase 云端真实数据'
+            : state.dataSource === 'uploaded'
+              ? '本次上传的官方后台数据'
+              : supabaseClient ? '本地页面，尚未同步云端' : '尚未加载真实数据';
+      const sourceBadge = state.cloudStatus === 'loading'
+        ? '数据看板 · 正在同步云端'
+        : state.cloudStatus === 'error'
+          ? '数据看板 · 云端同步失败'
+          : state.dataSource === 'supabase'
+            ? '数据看板 · 已同步 Supabase'
+            : state.dataSource === 'uploaded'
+              ? '数据看板 · 已读取上传数据'
+              : supabaseClient ? '数据看板 · 可同步云端' : '数据看板 · 等待上传';
+      const pageLabel = state.view === 'home' ? '主页 Home' : '平台页 Platform';
+      const operatorLabel = state.operator && state.operator !== '未命名' ? state.operator : '未填写';
+      const latest = getLatestPlatformUpdate(platform);
+      const currentDataLabel = `${contents.length} 条内容 · ${imports.length} 个批次`;
+      const summary = state.view === 'home'
+        ? (totalContents ? `已汇总 ${platforms.filter(item => (item.contents || []).length).length} 个有数据平台，共 ${totalContents} 条内容。` : '当前还没有可分析的真实数据。')
+        : (hasPlatformData ? `${platform.name || '当前平台'} 已有 ${contents.length} 条内容，可继续查看趋势和复盘。` : `${platform.name || '当前平台'} 还没有数据，上传官方后台文件后才会生成分析。`);
+
+      el('dataSourceBadge').textContent = sourceBadge;
+      el('modeText').textContent = pageLabel;
+      el('platformText').textContent = platform.name || '未命名平台';
+      el('operatorEcho').textContent = operatorLabel;
+      el('operatorChip').textContent = operatorLabel;
+      el('sourceText').textContent = sourceLabel;
+      el('dataCountText').textContent = state.view === 'home' ? `${totalContents} 条内容 · ${totalImports} 个批次` : currentDataLabel;
+      el('lastUpdatedText').textContent = formatRuntimeTime(latest);
+      el('runtimeSummary').textContent = summary;
+
+      const steps = [];
+      if (operatorLabel === '未填写') {
+        steps.push({ title: '填写当前操作者', text: '先补充姓名，上传和修改记录才能追溯。', state: 'current', tag: '建议现在做' });
+      } else {
+        steps.push({ title: '操作者已就绪', text: `${operatorLabel} 的操作会写入导入记录和审计日志。`, state: 'done', tag: '已完成' });
+      }
+      if (!hasPlatformData && state.view === 'platform') {
+        steps.push({ title: `上传${platform.name || '当前平台'}官方数据`, text: '选择 CSV / XLSX / XLS 文件，系统会按平台字段口径分析。', state: 'current', tag: '下一步' });
+      } else if (!totalContents) {
+        steps.push({ title: '选择平台并上传文件', text: '从各平台官方后台导出数据，不使用公开页面或演示数据。', state: 'current', tag: '下一步' });
+      } else {
+        steps.push({ title: '检查最新数据与趋势', text: state.view === 'platform' ? '查看指标、趋势、内容明细和爆款判断。' : '从平台入口进入工作台，查看需要复盘的平台。', state: 'current', tag: '建议现在做' });
+      }
+      if (state.dataSource !== 'supabase' && supabaseClient && totalContents) {
+        steps.push({ title: '同步到 Supabase', text: '把本地本次分析结果与历史批次保存到云端，供多人协作使用。', state: '', tag: '待同步' });
+      } else if (hasPlatformData) {
+        steps.push({ title: '查看日志与运营复盘', text: '确认文件、操作者、时间和分析结论，再沉淀周度 / 月度动作。', state: '', tag: '随后进行' });
+      } else {
+        steps.push({ title: '进入平台页查看分析', text: '数据上传后，这里会出现真实 KPI、趋势、爆款和复盘建议。', state: '', tag: '上传后' });
+      }
+      el('runtimeActions').innerHTML = steps.map(step => `<li class="${step.state || ''}"><strong>${step.title}<span class="action-tag">${step.tag}</span></strong><p>${step.text}</p></li>`).join('');
     }
 
     function toggleMainView() {
@@ -1888,19 +1990,13 @@
       el('uploadPlatform').innerHTML = platforms.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
       el('uploadPlatform').value = state.platform;
       el('uploadOperator').value = state.operator;
-      el('operatorEcho').textContent = state.operator || '未填写';
-      el('operatorChip').textContent = state.operator || '未填写';
-      el('sourceText').textContent = state.dataSource === 'supabase' ? 'Supabase 云端数据' : state.dataSource === 'uploaded' ? '已读取本次上传的真实数据，可进入平台查看分析' : '干净底座，等待上传官方后台数据';
-      el('dataSourceBadge').textContent = state.dataSource === 'supabase' ? 'GitHub Pages 主页面 · Supabase Connected' : state.dataSource === 'uploaded' ? 'GitHub Pages 主页面 · Uploaded' : 'GitHub Pages 主页面 · Clean Base';
     }
 
     function renderAll() {
       renderHome();
       renderPlatformList();
       renderPlatform();
-      if (state.dataSource !== 'supabase') {
-        el('sourceText').textContent = state.dataSource === 'uploaded' ? '已读取本次上传的真实数据，可进入平台查看分析' : '干净底座，等待上传官方后台数据';
-      }
+      renderRuntimeStatus();
     }
 
     async function loadCloudStructure() {
@@ -1925,13 +2021,15 @@
 
     async function syncFromCloud() {
       if (!supabaseClient) {
-        el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · Supabase 未初始化';
-        el('sourceText').textContent = '当前浏览器未加载 Supabase 客户端';
+        state.cloudStatus = 'unavailable';
+        state.statusMessage = '当前浏览器未加载 Supabase 客户端';
+        renderRuntimeStatus();
         return;
       }
       try {
-        state.dataSource = 'supabase';
-        el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · 正在读取云端';
+        state.cloudStatus = 'loading';
+        state.statusMessage = '';
+        renderRuntimeStatus();
         const bundle = await loadCloudStructure();
         const mergedPlatforms = (bundle.platforms || []).map(platform => {
           const profileLabel = getFieldProfile(platform.id).label;
@@ -1994,14 +2092,14 @@
           platforms.length = 0;
           mergedPlatforms.forEach(p => platforms.push(p));
         }
+        state.dataSource = 'supabase';
+        state.cloudStatus = 'connected';
+        state.statusMessage = '';
         renderAll();
-        el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · Supabase Connected';
-        el('sourceText').textContent = 'Supabase 云端数据';
       } catch (err) {
-        state.dataSource = 'clean';
+        state.cloudStatus = 'error';
+        state.statusMessage = `云端读取失败：${err.message}`;
         renderAll();
-        el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · Clean Base';
-        el('sourceText').textContent = `云端读取失败，已回到干净底座：${err.message}`;
       }
     }
 
@@ -2461,6 +2559,8 @@
         state.platform = platform.id;
         state.operator = operator;
         state.dataSource = 'uploaded';
+        state.cloudStatus = supabaseClient ? 'ready' : 'unavailable';
+        state.statusMessage = `已解析 ${summaries.length} 个文件，历史数据已保留`;
         renderAll();
 
         if (supabaseClient) {
@@ -2487,11 +2587,18 @@
             if (failed) throw failed.error;
             cloudHashes.add(summary.fileHash);
           }
+          state.dataSource = 'supabase';
+          state.cloudStatus = 'connected';
+          state.statusMessage = `已将 ${summaries.length} 个文件写入 Supabase`;
+          renderAll();
         }
         hint.textContent = `已新增 ${summaries.length} 个文件，跳过 ${skipped.length} 个重复文件；历史数据已保留。`;
         closeModal('uploadModal');
       } catch (err) {
         console.error(err);
+        state.cloudStatus = 'error';
+        state.statusMessage = `上传或云端写入失败：${err.message}`;
+        renderRuntimeStatus();
         hint.textContent = `上传失败：${err.message}`;
       }
     }
@@ -2519,9 +2626,9 @@
       const { error } = await supabaseClient.from(TABLES.platforms).upsert(platformRows, { onConflict: 'code' });
       if (error) throw error;
       state.dataSource = 'supabase';
+      state.cloudStatus = 'connected';
+      state.statusMessage = '平台配置已保存；历史内容、导入批次和审计日志均已保留';
       renderAll();
-      el('dataSourceBadge').textContent = 'GitHub Pages 主页面 · Supabase Connected';
-      el('sourceText').textContent = '平台配置已保存；历史内容、导入批次和审计日志均已保留';
     }
 
     document.addEventListener('click', (e) => {
@@ -2548,8 +2655,9 @@
     });
 
     el('operatorInput').addEventListener('input', (e) => {
-      state.operator = e.target.value.trim() || '未命名';
+      state.operator = e.target.value.trim();
       renderPlatformList();
+      renderRuntimeStatus();
     });
 
     window.setView = setView;
@@ -2566,12 +2674,6 @@
     try {
       renderAll();
       setView('home');
-      el('dataSourceBadge').textContent = getSupabaseModeText();
-      el('sourceText').textContent = supabaseClient ? '已连接 Supabase，点击“从云端加载”同步已保存数据' : '干净底座，等待上传官方后台数据';
-
-      if (supabaseClient) {
-        el('sourceText').textContent = '已连接 Supabase，点“从云端加载”可手动同步';
-      }
     } catch (err) {
       console.error('Dashboard init failed:', err);
       const cards = document.getElementById('platformCards');
