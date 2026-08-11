@@ -257,7 +257,7 @@
     .platform-hero-main .hero-platform-item strong { font-size: 16px; margin-top: 3px; }
     .platform-hero-main .hero-platform-description { font-size: 12px; line-height: 1.55; }
     .platform-hero-main .hero-platform-meta { margin-top: 9px; }
-
+    .hero-side {
       padding: 18px;
       display: grid;
       gap: 12px;
@@ -2401,6 +2401,10 @@
       el('switchViewBtn').textContent = '返回首页';
     }
 
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+    }
+
     function getPlatformMark(p) {
       if (p.icon) return p.icon;
       const marks = { wechat_video: '视', wechat_mp: '文', xhs: '红', douyin: '抖', bilibili: 'B', linkedin: '领', csdn: 'C' };
@@ -2416,10 +2420,14 @@
       if (!list) return;
       list.innerHTML = platforms.map(platform => {
         const count = Array.isArray(platform.contents) ? platform.contents.length : 0;
-        return `<div class="hero-platform-item ${platform.id === state.platform ? 'active' : ''}" role="button" tabindex="0" onclick="setPlatform('${platform.id}')" onkeydown="if(event.key==='Enter'||event.key===' ')setPlatform('${platform.id}')">
-          <span class="platform-mark ${platform.color || 'primary'}"${getPlatformMarkStyle(platform)}>${getPlatformMark(platform)}</span>
-          <span class="hero-platform-copy"><strong>${platform.name}</strong><span class="hero-platform-description">${platform.category || platform.description || '未填写平台介绍'}</span><span class="hero-platform-meta">${count ? `${count} 条内容` : '等待数据'} · 点击进入详情</span></span>
-          <button type="button" class="hero-platform-edit" title="编辑平台入口" onclick="event.stopPropagation(); openEditPlatform('${platform.id}')">编辑</button>
+        const name = escapeHtml(platform.name || '未命名平台');
+        const description = escapeHtml(platform.category || platform.description || '未填写平台介绍');
+        const mark = escapeHtml(getPlatformMark(platform));
+        const id = String(platform.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
+        return `<div class="hero-platform-item ${platform.id === state.platform ? 'active' : ''}" role="button" tabindex="0" onclick="setPlatform('${id}')" onkeydown="if(event.key==='Enter'||event.key===' ')setPlatform('${id}')">
+          <span class="platform-mark ${platform.color || 'primary'}"${getPlatformMarkStyle(platform)}>${mark}</span>
+          <span class="hero-platform-copy"><strong>${name}</strong><span class="hero-platform-description">${description}</span><span class="hero-platform-meta">${count ? `${count} 条内容` : '等待数据'} · 点击进入详情</span></span>
+          <button type="button" class="hero-platform-edit" title="编辑平台入口" onclick="event.stopPropagation(); openEditPlatform('${id}')">编辑</button>
         </div>`;
       }).join('');
       el('heroPlatformCount').textContent = String(platforms.length);
