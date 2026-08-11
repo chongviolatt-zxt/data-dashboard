@@ -226,12 +226,16 @@
       gap: 11px;
       padding-bottom: 2px;
     }
-    .hero-platform-item { min-width: 0; width: 100%; min-height: 78px; }
-    .hero-platform-item { flex:0 0 auto; display:inline-flex; align-items:center; gap:13px; padding:12px 14px; border:1px solid var(--line); border-radius:14px; background:#fff; cursor:pointer; font:inherit; color:var(--text); }
-    .hero-platform-item:hover, .hero-platform-item.active { border-color:rgba(47,111,94,.42); background:rgba(47,111,94,.08); }
-    .hero-platform-item .platform-mark { width:64px; height:64px; border-radius:18px; font-size:21px; }
-    .hero-platform-item strong { display:block; font-size:14px; white-space:nowrap; margin-bottom:5px; }
-    .hero-platform-item small { display:block; color:var(--muted-2); font-size:11px; }
+    .hero-platform-item { min-width: 0; width: 100%; min-height: 96px; }
+    .hero-platform-item { position:relative; display:flex; align-items:flex-start; gap:13px; padding:14px; border:1px solid var(--line); border-radius:16px; background:#fff; cursor:pointer; color:var(--text); text-align:left; transition:.18s ease; }
+    .hero-platform-item:hover, .hero-platform-item.active { border-color:rgba(47,111,94,.42); background:rgba(47,111,94,.08); transform:translateY(-1px); }
+    .hero-platform-item .platform-mark { width:64px; height:64px; border-radius:18px; font-size:21px; flex:0 0 auto; }
+    .hero-platform-copy { min-width:0; flex:1; padding-right:42px; }
+    .hero-platform-item strong { display:block; font-size:15px; line-height:1.35; margin:1px 0 5px; }
+    .hero-platform-description { display:-webkit-box; overflow:hidden; -webkit-box-orient:vertical; -webkit-line-clamp:2; color:var(--muted); font-size:11px; line-height:1.5; }
+    .hero-platform-meta { display:flex; align-items:center; gap:6px; margin-top:8px; color:var(--muted-2); font-size:11px; }
+    .hero-platform-edit { position:absolute; top:11px; right:11px; padding:5px 8px; border:1px solid var(--line); border-radius:9px; background:rgba(255,255,255,.92); color:var(--primary); font:inherit; font-size:11px; cursor:pointer; }
+    .hero-platform-edit:hover { border-color:var(--primary); background:#fff; }
     .tag {
       padding: 8px 12px;
       border-radius: 999px;
@@ -248,11 +252,11 @@
     .platform-hero-main .hero-platform-head strong { font-size: 20px; }
     .platform-hero-main .hero-platform-head p { font-size: 12px; }
     .platform-hero-main .hero-platform-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-    .platform-hero-main .hero-platform-item { min-height: 112px; padding: 14px; gap: 13px; align-items: flex-start; }
-    .platform-hero-main .hero-platform-item .platform-mark { width: 64px; height: 64px; border-radius: 18px; font-size: 21px; }
-    .platform-hero-main .hero-platform-item strong { font-size: 15px; margin-top: 4px; }
-    .platform-hero-main .hero-platform-item small { margin-top: 8px; font-size: 11px; line-height: 1.45; }
-    .platform-hero-main .hero-platform-item small::after { content: ' · 点击进入详情'; color: var(--muted-2); }
+    .platform-hero-main .hero-platform-item { min-height: 142px; padding: 16px; gap: 14px; align-items: flex-start; }
+    .platform-hero-main .hero-platform-item .platform-mark { width: 68px; height: 68px; border-radius: 20px; font-size: 23px; }
+    .platform-hero-main .hero-platform-item strong { font-size: 16px; margin-top: 3px; }
+    .platform-hero-main .hero-platform-description { font-size: 12px; line-height: 1.55; }
+    .platform-hero-main .hero-platform-meta { margin-top: 9px; }
 
       padding: 18px;
       display: grid;
@@ -951,6 +955,7 @@
     .hidden { display: none !important; }
     @media (max-width: 1180px) {
       .hero, .grid-2, .grid-3, .grid-4, .kpi-grid, .grid-platforms, .grid-home, .two-col, .chart-wrap, .platform-analysis-grid, .overview-content-grid { grid-template-columns: 1fr; }
+      .platform-hero-main .hero-platform-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .section-head { align-items: start; flex-direction: column; }
       .section-head p { text-align: left; }
       .topbar { align-items: flex-start; flex-direction: column; }
@@ -959,6 +964,9 @@
     @media (max-width: 680px) {
       .wrap { padding: 14px 12px 28px; }
       h2.hero-title { font-size: 30px; }
+      .platform-hero-main .hero-platform-list { grid-template-columns: 1fr; }
+      .platform-hero-main .hero-platform-item { min-height: 126px; }
+      .hero-platform-copy { padding-right: 38px; }
       .form-grid, .mini-grid { grid-template-columns: 1fr; }
       .field-inline { min-width: 0; width: 100%; }
       .top-actions { width: 100%; }
@@ -1011,10 +1019,6 @@
             <dt>当前数据量</dt><dd id="dataCountText">0 条内容 · 0 个批次</dd>
             <dt>最近更新</dt><dd id="lastUpdatedText">暂无记录</dd>
           </dl>
-        </div>
-        <div class="side-block">
-          <div class="side-title"><i></i> 建议操作顺序</div>
-          <ol class="timeline runtime-actions" id="runtimeActions" style="margin-top:4px;"></ol>
         </div>
       </aside>
     </section>
@@ -1717,28 +1721,7 @@
       el('dataCountText').textContent = state.view === 'home' ? `${totalContents} 条内容 · ${totalImports} 个批次` : currentDataLabel;
       el('lastUpdatedText').textContent = formatRuntimeTime(latest);
       el('runtimeSummary').textContent = summary;
-
-      const steps = [];
-      if (operatorLabel === '未填写') {
-        steps.push({ title: '填写当前操作者', text: '先补充姓名，上传和修改记录才能追溯。', state: 'current', tag: '建议现在做' });
-      } else {
-        steps.push({ title: '操作者已就绪', text: `${operatorLabel} 的操作会写入导入记录和审计日志。`, state: 'done', tag: '已完成' });
-      }
-      if (!hasPlatformData && state.view === 'platform') {
-        steps.push({ title: `上传${platform.name || '当前平台'}官方数据`, text: '选择 CSV / XLSX / XLS 文件，系统会按平台字段口径分析。', state: 'current', tag: '下一步' });
-      } else if (!totalContents) {
-        steps.push({ title: '选择平台并上传文件', text: '从各平台官方后台导出数据，不使用公开页面或演示数据。', state: 'current', tag: '下一步' });
-      } else {
-        steps.push({ title: '检查最新数据与趋势', text: state.view === 'platform' ? '查看指标、趋势、内容明细和爆款判断。' : '从平台入口进入工作台，查看需要复盘的平台。', state: 'current', tag: '建议现在做' });
-      }
-      if (state.dataSource !== 'supabase' && supabaseClient && totalContents) {
-        steps.push({ title: '同步到 Supabase', text: '把本地本次分析结果与历史批次保存到云端，供多人协作使用。', state: '', tag: '待同步' });
-      } else if (hasPlatformData) {
-        steps.push({ title: '查看日志与运营复盘', text: '确认文件、操作者、时间和分析结论，再沉淀周度 / 月度动作。', state: '', tag: '随后进行' });
-      } else {
-        steps.push({ title: '进入平台页查看分析', text: '数据上传后，这里会出现真实 KPI、趋势、爆款和复盘建议。', state: '', tag: '上传后' });
-      }
-      el('runtimeActions').innerHTML = steps.map(step => `<li class="${step.state || ''}"><strong>${step.title}<span class="action-tag">${step.tag}</span></strong><p>${step.text}</p></li>`).join('');
+    }
     }
 
     function toggleMainView() {
@@ -2433,10 +2416,11 @@
       if (!list) return;
       list.innerHTML = platforms.map(platform => {
         const count = Array.isArray(platform.contents) ? platform.contents.length : 0;
-        return `<button type="button" class="hero-platform-item ${platform.id === state.platform ? 'active' : ''}" onclick="setPlatform('${platform.id}')">
+        return `<div class="hero-platform-item ${platform.id === state.platform ? 'active' : ''}" role="button" tabindex="0" onclick="setPlatform('${platform.id}')" onkeydown="if(event.key==='Enter'||event.key===' ')setPlatform('${platform.id}')">
           <span class="platform-mark ${platform.color || 'primary'}"${getPlatformMarkStyle(platform)}>${getPlatformMark(platform)}</span>
-          <span><strong>${platform.name}</strong><small>${count ? `${count} 条内容` : '等待数据'}</small></span>
-        </button>`;
+          <span class="hero-platform-copy"><strong>${platform.name}</strong><span class="hero-platform-description">${platform.category || platform.description || '未填写平台介绍'}</span><span class="hero-platform-meta">${count ? `${count} 条内容` : '等待数据'} · 点击进入详情</span></span>
+          <button type="button" class="hero-platform-edit" title="编辑平台入口" onclick="event.stopPropagation(); openEditPlatform('${platform.id}')">编辑</button>
+        </div>`;
       }).join('');
       el('heroPlatformCount').textContent = String(platforms.length);
     }
@@ -2589,17 +2573,27 @@
     const PLATFORM_FIELD_PROFILES = {
       bilibili: {
         label: 'Bilibili',
-        keywords: { title: ['标题', '视频标题', '作品标题', 'title'], date: ['发布时间', '发布日期', '日期', 'publish_time'], views: ['播放量', '播放', '观看数', 'view'], likes: ['点赞', '喜欢', 'like'], favorites: ['收藏', 'favorite'], comments: ['评论', 'comment'], shares: ['分享', 'share'], completionRate: ['完播率', 'completion'] },
+        keywords: { title: ['标题', '视频标题', '作品标题', 'title'], date: ['发布时间', '发布日期', '日期', 'publish_time'], views: ['播放量', '播放', '观看数', 'view'], likes: ['点赞', '喜欢', 'like'], favorites: ['收藏', 'favorite'], comments: ['评论', 'comment'], shares: ['分享', 'share'], watchTime: ['完播率', 'completion'] },
         hotThreshold: { views: 1000, engagement: 100 }
       },
       linkedin: {
         label: 'LinkedIn',
-        keywords: { title: ['标题', '内容', '帖子', 'title'], date: ['发布时间', '发布日期', '日期', 'publish_time'], views: ['展示次数', '浏览量', '曝光量', 'impressions', 'views'], likes: ['点赞', 'reactions', 'like'], favorites: ['收藏', 'save'], comments: ['评论', 'comment'], shares: ['分享', 'share'], completionRate: [] },
+        keywords: { title: ['标题', '内容', '帖子', 'title'], date: ['发布时间', '发布日期', '日期', 'publish_time'], views: ['展示次数', '浏览量', '曝光量', 'impressions', 'views'], likes: ['点赞', 'reactions', 'like'], favorites: ['收藏', 'save'], comments: ['评论', 'comment'], shares: ['分享', 'share'], watchTime: [] },
         hotThreshold: { views: 1000, engagement: 50 }
       },
       csdn: {
         label: 'CSDN',
-        keywords: { title: ['标题', '文章标题', 'title'], date: ['发布时间', '发布日期', '日期', 'publish_time'], views: ['阅读数', '浏览量', '访问量', 'views'], likes: ['点赞', 'like'], favorites: ['收藏', 'favorite'], comments: ['评论', 'comment'], shares: ['分享', 'share'], completionRate: [] },
+        keywords: {
+          title: ['标题', '文章标题', 'title'],
+          date: ['发布时间', '发布日期', '日期', 'publish_time'],
+          views: ['阅读数', '浏览量', '访问量', 'views'],
+          likes: ['点赞', 'like'],
+          favorites: ['收藏', 'favorite'],
+          comments: ['评论', 'comment'],
+          shares: ['分享', 'share'],
+          status: ['是否爆款', '爆款', '状态', '热度', 'status'],
+          watchTime: []
+        },
         hotThreshold: { views: 1000, engagement: 50 }
       },
       wechat_video: {
@@ -2747,7 +2741,7 @@
 
     function matchHeaderIndex(headers, keywords) {
       const lower = headers.map(h => normalizeText(h).toLowerCase());
-      for (const key of keywords) {
+      for (const key of Array.isArray(keywords) ? keywords : []) {
         const idx = lower.findIndex(cell => cell.includes(String(key).toLowerCase()));
         if (idx >= 0) return idx;
       }
@@ -3067,6 +3061,9 @@
       let duplicateRows = 0;
       for (const file of supported) {
         try {
+          if (platformId === 'csdn' && /公开页抓取/.test(file.name)) {
+            result.warnings.push(`${file.name} 标记为公开页抓取数据，可用于临时分析，但不作为 CSDN 官方后台数据来源。`);
+          }
           const rows = await readUploadRows(file);
           const cleaned = rows.filter(row => Array.isArray(row) && row.some(cell => normalizeText(cell) !== ''));
           if (!cleaned.length) {
