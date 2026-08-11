@@ -683,6 +683,29 @@
     .trend-range button.active { background: var(--primary); border-color: var(--primary); color: #fff; }
     .trend-range input { color: var(--text); min-width: 132px; }
     .trend-range-label { color: var(--muted-2); font-size: 11px; }
+    .trend-range-message { width: 100%; min-height: 18px; color: var(--muted-2); font-size: 11px; }
+    .trend-range-message.warn { color: #9a641e; }
+    .trend-insights {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .trend-insight {
+      padding: 10px 11px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: rgba(255,255,255,.82);
+      min-width: 0;
+    }
+    .trend-insight span { display: block; color: var(--muted-2); font-size: 10.5px; margin-bottom: 4px; }
+    .trend-insight strong { display: block; color: var(--text); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .trend-contribution { margin-top: 10px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+    .trend-contribution-head { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 9px; color: var(--muted); font-size: 11px; }
+    .trend-bars { height: 54px; display: flex; align-items: flex-end; gap: 3px; }
+    .trend-bar { flex: 1 1 0; min-width: 2px; border-radius: 4px 4px 1px 1px; opacity: .78; }
+    .trend-bar.zero { min-height: 2px; background: #e5e7eb !important; }
+    @media (max-width: 860px) { .trend-insights { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .overview-content-grid { grid-template-columns: minmax(0, 1.72fr) minmax(240px, .68fr); }
     .activity-shell { min-width: 0; }
     .activity-shell .timeline { max-height: 330px; overflow: auto; padding-right: 4px; }
@@ -1027,6 +1050,7 @@
               </div>
               <div class="trend-summary"><strong id="platformTrendValue">-</strong><span id="platformTrendHint">暂无真实趋势数据</span></div>
               <div class="trend-range" id="platformTrendRange">
+                <button type="button" data-range="7">近7天</button>
                 <button type="button" data-range="30" class="active">近30天</button>
                 <button type="button" data-range="all">全部日期</button>
                 <span class="trend-range-label">自定义</span>
@@ -1034,10 +1058,13 @@
                 <span class="trend-range-label">至</span>
                 <input id="trendEndDate" type="date" aria-label="趋势结束日期" />
                 <button type="button" id="applyTrendDateBtn">应用</button>
+                <span class="trend-range-message" id="trendRangeMessage"></span>
               </div>
               <div class="chart-box">
                 <svg class="spark" id="platformChart" viewBox="0 0 760 300" preserveAspectRatio="none"></svg>
               </div>
+              <div class="trend-insights" id="platformTrendInsights"></div>
+              <div class="trend-contribution" id="platformTrendContribution"></div>
             </div>
             <div class="chart-card platform-context-card">
               <h4>平台说明</h4>
@@ -1396,36 +1423,6 @@
         short: '抖音',
         category: '短视频 / 完播 / 转化',
         color: 'cyan',
-        kpis: [], chips: [], notes: [], topics: [], hots: [], suggestions: [], kpisExtra: [],
-        contents: [], imports: [], audits: [], activities: [], snapshots: [],
-        week: '', month: '', conversion: '', spark: [], trendMetrics: {}, trendDates: []
-      },
-      {
-        id: 'bilibili',
-        name: 'Bilibili',
-        short: 'B站',
-        category: '中长视频 / 搜索 / 社区',
-        color: 'primary',
-        kpis: [], chips: [], notes: [], topics: [], hots: [], suggestions: [], kpisExtra: [],
-        contents: [], imports: [], audits: [], activities: [], snapshots: [],
-        week: '', month: '', conversion: '', spark: [], trendMetrics: {}, trendDates: []
-      },
-      {
-        id: 'linkedin',
-        name: 'LinkedIn',
-        short: 'LinkedIn',
-        category: '海外品牌 / 职业社交 / B2B',
-        color: 'cyan',
-        kpis: [], chips: [], notes: [], topics: [], hots: [], suggestions: [], kpisExtra: [],
-        contents: [], imports: [], audits: [], activities: [], snapshots: [],
-        week: '', month: '', conversion: '', spark: [], trendMetrics: {}, trendDates: []
-      },
-      {
-        id: 'csdn',
-        name: 'CSDN',
-        short: 'CSDN',
-        category: '技术文章 / 搜索 / 开发者社区',
-        color: 'amber',
         kpis: [], chips: [], notes: [], topics: [], hots: [], suggestions: [], kpisExtra: [],
         contents: [], imports: [], audits: [], activities: [], snapshots: [],
         week: '', month: '', conversion: '', spark: [], trendMetrics: {}, trendDates: []
@@ -1797,22 +1794,6 @@
         { id: 'likesRate', label: '点赞率', unit: '%', color: '#2f6f5e', description: '点赞数 ÷ 播放量' },
         { id: 'favoritesRate', label: '收藏率', unit: '%', color: '#c97b3f', description: '收藏数 ÷ 播放量' },
         { id: 'completionRate', label: '完播率', unit: '%', color: '#b06367', description: '按抖音后台完播率字段统计' }
-      ],
-      bilibili: [
-        { id: 'views', label: '播放量', unit: '次', color: '#4c8df6', description: '按 Bilibili 创作中心播放量字段统计' },
-        { id: 'likesRate', label: '点赞率', unit: '%', color: '#2f6f5e', description: '点赞数 ÷ 播放量' },
-        { id: 'favoritesRate', label: '收藏率', unit: '%', color: '#c97b3f', description: '收藏数 ÷ 播放量' },
-        { id: 'completionRate', label: '完播率', unit: '%', color: '#b06367', description: '导出文件有完播率字段时显示' }
-      ],
-      linkedin: [
-        { id: 'views', label: '曝光量', unit: '次', color: '#2867b2', description: '按 LinkedIn 后台 Impressions / Views 字段统计' },
-        { id: 'likesRate', label: '互动反应率', unit: '%', color: '#2f6f5e', description: 'Reactions ÷ Impressions' },
-        { id: 'favoritesRate', label: '收藏率', unit: '%', color: '#c97b3f', description: '有 Saves 字段时显示' }
-      ],
-      csdn: [
-        { id: 'views', label: '阅读量', unit: '次', color: '#c97b3f', description: '按 CSDN 后台阅读数统计' },
-        { id: 'likesRate', label: '点赞率', unit: '%', color: '#2f6f5e', description: '点赞数 ÷ 阅读数' },
-        { id: 'favoritesRate', label: '收藏率', unit: '%', color: '#b06367', description: '收藏数 ÷ 阅读数' }
       ]
     };
 
@@ -1827,14 +1808,14 @@
           return Array.isArray(platform.contents) && platform.contents.length > 0 && Array.isArray(platform.trendDates) && platform.trendDates.some(Boolean);
         }
         if (state.dataSource !== 'uploaded') return false;
-        return Array.isArray(uploaded[metric.id]) && uploaded[metric.id].some(value => Number(value) > 0);
+        return Array.isArray(uploaded[metric.id]) && uploaded[metric.id].some(value => value !== null && value !== undefined && Number.isFinite(Number(value)));
       });
     }
 
     function buildTrendSeries(platform, metric) {
       const uploaded = platform.trendMetrics || {};
       if (Array.isArray(uploaded[metric.id]) && uploaded[metric.id].length) return uploaded[metric.id];
-      if (metric.id === 'views' && state.dataSource === 'supabase') return (Array.isArray(platform.contents) ? platform.contents : []).map(row => parseDisplayedMetric(row[2])).filter(value => value > 0);
+      if (metric.id === 'views' && state.dataSource === 'supabase') return (Array.isArray(platform.contents) ? platform.contents : []).map(row => parseDisplayedMetric(row[2]));
       return [];
     }
 
@@ -1872,13 +1853,17 @@
       const latestDate = validDates.length ? validDates[validDates.length - 1] : '';
       let start = range.start || '';
       let end = range.end || latestDate;
-      if (range.mode === '30' && latestDate) {
+      const rollingDays = Number(range.mode);
+      if ((rollingDays === 7 || rollingDays === 30) && latestDate) {
         const latest = new Date(`${latestDate}T00:00:00Z`);
-        latest.setUTCDate(latest.getUTCDate() - 29);
+        latest.setUTCDate(latest.getUTCDate() - (rollingDays - 1));
         start = latest.toISOString().slice(0, 10);
         end = latestDate;
       }
       if (range.mode === 'all') { start = ''; end = ''; }
+      if (range.mode === 'custom' && (!start || !end || start > end)) {
+        return { series: [], dates: [], start, end, mode: range.mode, error: '请选择有效的开始日期和结束日期' };
+      }
       const buckets = new Map();
       series.forEach((value, index) => {
         const date = dates[index] || '';
@@ -1894,14 +1879,16 @@
       const aggregate = values => metric.unit === '%'
         ? values.reduce((sum, value) => sum + value, 0) / values.length
         : values.reduce((sum, value) => sum + value, 0);
-      if (range.mode === '30' && start && end) {
+      const shouldFillDates = (rollingDays === 7 || rollingDays === 30 || range.mode === 'custom') && start && end;
+      if (shouldFillDates) {
         const completeDates = buildDateSequence(start, end);
         return {
           series: completeDates.map(date => buckets.has(date) ? aggregate(buckets.get(date)) : 0),
           dates: completeDates,
           start,
           end,
-          mode: range.mode
+          mode: range.mode,
+          sourceDateCount: completeDates.filter(date => buckets.has(date)).length
         };
       }
       const selectedDates = Array.from(buckets.keys()).sort();
@@ -1916,9 +1903,52 @@
 
     function renderTrendRangeControls(platform) {
       const range = getTrendRange(platform);
+      const validDates = (Array.isArray(platform.trendDates) ? platform.trendDates : []).map(normalizePublishDate).filter(Boolean).sort();
+      const earliest = validDates[0] || '';
+      const latest = validDates[validDates.length - 1] || '';
       document.querySelectorAll('#platformTrendRange [data-range]').forEach(button => button.classList.toggle('active', button.dataset.range === range.mode));
-      el('trendStartDate').value = range.mode === 'custom' ? range.start || '' : '';
-      el('trendEndDate').value = range.mode === 'custom' ? range.end || '' : '';
+      const startInput = el('trendStartDate');
+      const endInput = el('trendEndDate');
+      startInput.value = range.mode === 'custom' ? range.start || '' : '';
+      endInput.value = range.mode === 'custom' ? range.end || '' : '';
+      startInput.min = earliest;
+      startInput.max = latest;
+      endInput.min = earliest;
+      endInput.max = latest;
+      const message = el('trendRangeMessage');
+      message.classList.remove('warn');
+      message.textContent = earliest && latest ? `数据日期：${earliest} 至 ${latest}` : '当前没有可用的真实日期';
+    }
+
+    function renderTrendInsights(filtered, metric) {
+      const container = el('platformTrendInsights');
+      const contribution = el('platformTrendContribution');
+      const values = filtered.series.map(Number).filter(Number.isFinite);
+      if (!values.length) {
+        container.innerHTML = '';
+        contribution.innerHTML = '<div class="empty">所选范围暂无可分析的真实数据。</div>';
+        return;
+      }
+      const total = values.reduce((sum, value) => sum + value, 0);
+      const average = total / values.length;
+      const peak = Math.max(...values);
+      const peakIndex = values.indexOf(peak);
+      const activeDays = values.filter(value => value !== 0).length;
+      const totalLabel = metric.unit === '%' ? formatTrendValue(average, metric) : formatTrendValue(total, metric);
+      container.innerHTML = `
+        <div class="trend-insight"><span>${metric.unit === '%' ? '区间均值' : '区间总量'}</span><strong>${totalLabel}</strong></div>
+        <div class="trend-insight"><span>日均表现</span><strong>${formatTrendValue(average, metric)}</strong></div>
+        <div class="trend-insight"><span>峰值日期</span><strong>${filtered.dates[peakIndex] || '-'}</strong></div>
+        <div class="trend-insight"><span>有数据日期</span><strong>${activeDays} / ${values.length} 天</strong></div>
+      `;
+      const max = Math.max(1, ...values.map(value => Math.abs(value)));
+      contribution.innerHTML = `
+        <div class="trend-contribution-head"><strong>每日贡献</strong><span>${formatTrendValue(peak, metric)} · ${filtered.dates[peakIndex] || '日期未识别'}</span></div>
+        <div class="trend-bars">${values.map((value, index) => {
+          const height = value === 0 ? 2 : Math.max(6, Math.round(Math.abs(value) / max * 52));
+          return `<span class="trend-bar ${value === 0 ? 'zero' : ''}" style="height:${height}px;background:${metric.color}" title="${filtered.dates[index] || '日期未识别'}：${formatTrendValue(value, metric)}"></span>`;
+        }).join('')}</div>
+      `;
     }
 
     function drawChart(platform, metric) {
@@ -1985,21 +2015,36 @@
       el('applyTrendDateBtn').onclick = () => {
         const start = el('trendStartDate').value;
         const end = el('trendEndDate').value;
+        const message = el('trendRangeMessage');
         if (!start || !end || start > end) {
-          el('platformTrendHint').textContent = '请选择有效的开始日期和结束日期';
+          message.classList.add('warn');
+          message.textContent = !start || !end ? '请同时选择开始日期和结束日期' : '开始日期不能晚于结束日期';
           return;
         }
         platform.trendRange = { mode: 'custom', start, end };
         renderTrendChart(platform);
       };
+      [el('trendStartDate'), el('trendEndDate')].forEach(input => {
+        input.onkeydown = event => {
+          if (event.key === 'Enter') el('applyTrendDateBtn').click();
+        };
+      });
       if (!metric) {
         el('platformChartCaption').textContent = '上传数据后，系统会根据该平台字段显示可分析指标';
         el('platformTrendValue').textContent = '-';
         el('platformTrendHint').textContent = '暂无趋势数据';
         el('platformChart').innerHTML = '<rect x="0" y="0" width="760" height="300" rx="16" fill="#fff"></rect><text x="380" y="145" text-anchor="middle" fill="#8b93a7" font-size="14">上传数据后显示真实趋势</text>';
+        el('platformTrendInsights').innerHTML = '';
+        el('platformTrendContribution').innerHTML = '';
         return;
       }
       const filtered = buildFilteredTrendData(platform, metric);
+      if (filtered.error) {
+        el('trendRangeMessage').classList.add('warn');
+        el('trendRangeMessage').textContent = filtered.error;
+      } else {
+        el('trendRangeMessage').classList.remove('warn');
+      }
       const series = filtered.series.filter(value => value !== null && value !== undefined);
       const latest = series.length ? series[series.length - 1] : null;
       const average = series.length ? series.reduce((sum, value) => sum + (Number(value) || 0), 0) / series.length : null;
@@ -2007,6 +2052,7 @@
       el('platformTrendValue').textContent = formatTrendValue(latest, metric);
       el('platformTrendHint').textContent = series.length ? `${filtered.start || '全部日期'} 至 ${filtered.end || '最新日期'} · 当前值 · 平均 ${formatTrendValue(average, metric)}` : '所选日期范围暂无真实数据';
       el('platformChart').innerHTML = drawChart(platform, metric);
+      renderTrendInsights(filtered, metric);
     }
 
     function hasMetricValue(metric) {
@@ -2198,7 +2244,7 @@
     }
 
     function getPlatformMark(p) {
-      const marks = { wechat_video: '视', wechat_mp: '文', xhs: '红', douyin: '抖', bilibili: 'B', linkedin: 'L', csdn: 'C' };
+      const marks = { wechat_video: '视', wechat_mp: '文', xhs: '红', douyin: '抖' };
       return marks[p.id] || (p.short || p.name || '平').slice(0, 1);
     }
 
@@ -2402,51 +2448,6 @@
           watchTime: ['完播率', '平均播放时长', '完播', '完成率']
         },
         hotThreshold: { views: 2000, engagement: 200 }
-      },
-      bilibili: {
-        label: 'Bilibili',
-        keywords: {
-          title: ['稿件标题', '视频标题', '作品标题', '标题', '内容标题'],
-          date: ['投稿时间', '发布时间', '发布日期', '日期', '时间'],
-          views: ['播放量', '播放数', '浏览量', '观看量'],
-          likes: ['点赞数', '点赞'],
-          favorites: ['收藏数', '收藏'],
-          comments: ['评论数', '评论', '回复数'],
-          shares: ['分享数', '转发数', '分享', '转发'],
-          status: ['是否爆款', '爆款', '状态', 'status'],
-          watchTime: ['完播率', '平均观看时长', '平均播放时长']
-        },
-        hotThreshold: { views: 2000, engagement: 200 }
-      },
-      linkedin: {
-        label: 'LinkedIn',
-        keywords: {
-          title: ['Post title', 'Content', 'Post text', '标题', '内容', '帖子'],
-          date: ['Created date', 'Published date', 'Date', '发布时间', '发布日期', '日期'],
-          views: ['Impressions', 'Views', 'Video views', '曝光量', '浏览量', '观看量'],
-          likes: ['Reactions', 'Likes', '点赞', '反应数'],
-          favorites: ['Saves', '收藏'],
-          comments: ['Comments', '评论'],
-          shares: ['Reposts', 'Shares', '转发', '分享'],
-          status: ['Status', '状态', '是否爆款'],
-          watchTime: ['Video completion rate', 'Completion rate', '完播率']
-        },
-        hotThreshold: { views: 1000, engagement: 80 }
-      },
-      csdn: {
-        label: 'CSDN',
-        keywords: {
-          title: ['文章标题', '标题'],
-          date: ['发布日期', '发布时间', '日期', '创建时间'],
-          views: ['阅读数', '阅读量', '浏览量', '访问量'],
-          likes: ['点赞数', '点赞'],
-          favorites: ['收藏数', '收藏'],
-          comments: ['评论数', '评论'],
-          shares: ['分享数', '转发数', '分享', '转发'],
-          status: ['是否爆款', '爆款', '状态'],
-          watchTime: []
-        },
-        hotThreshold: { views: 1000, engagement: 50 }
       }
     };
     const DEFAULT_PROFILE = {
