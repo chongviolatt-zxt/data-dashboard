@@ -593,6 +593,10 @@
     .platform-status-dot.ready { background: var(--green); box-shadow: 0 0 0 3px rgba(42,140,109,0.10); }
     .platform-arrow { color: #a7b0be; font-size: 17px; transition: transform .18s ease; }
     .sidebar .item:hover .platform-arrow, .sidebar .item.active .platform-arrow { color: var(--primary); transform: translateX(2px); }
+    .platform-nav-only { grid-template-columns: 1fr; }
+    .platform-nav-only .sidebar { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+    .platform-nav-only .platform-switcher-head { grid-column: 1 / -1; }
+    .platform-overview-only[hidden] { display: none !important; }
     .chart-card, .content-area {
       border: 1px solid var(--line);
       border-radius: 18px;
@@ -1020,7 +1024,7 @@
           </div>
         </div>
 
-        <div class="grid-2">
+        <div class="grid-2" id="platformGlobalSummary">
           <div class="sidebar">
             <div class="platform-switcher-head">
               <div>
@@ -1031,7 +1035,7 @@
             </div>
             <div id="platformList"></div>
           </div>
-          <div class="content-area">
+          <div class="content-area platform-overview-only" id="platformOverviewSummary">
             <h4 id="platformHeader">微信视频号 · 平台工作台</h4>
             <p class="workspace-copy">这里是当前平台的运营控制台：看真实指标、趋势、内容明细、导入批次和后续复盘，不再用示例数字填充。</p>
             <div class="chip-row" id="platformChips"></div>
@@ -1039,7 +1043,7 @@
           </div>
         </div>
 
-        <div class="panel platform-analysis-grid" style="margin-top:16px;">
+        <div class="panel platform-analysis-grid platform-global-overview" id="platformGlobalAnalysis" style="margin-top:16px;">
             <div class="chart-card platform-trend-card">
               <div class="trend-head">
                 <div>
@@ -2190,6 +2194,10 @@
 
     function renderPlatform() {
       const p = getPlatform() || {};
+      const overviewActive = state.tab === 'overview';
+      el('platformGlobalSummary').classList.toggle('platform-nav-only', !overviewActive);
+      el('platformOverviewSummary').hidden = !overviewActive;
+      el('platformGlobalAnalysis').hidden = !overviewActive;
       const chips = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.chips) ? p.chips : [];
       const kpis = getPlatformKpis(p);
       const notes = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.notes) ? p.notes : [];
