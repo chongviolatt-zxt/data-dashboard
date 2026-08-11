@@ -1093,6 +1093,11 @@
               <ul class="list" id="suggestionList"></ul>
             </div>
           </div>
+          <div class="panel" style="margin-top:14px;">
+            <div class="shell-top" style="margin:-18px -18px 14px;"><strong>内容指标快照</strong><span class="chip" id="snapshotCountChip">0 条历史快照</span></div>
+            <p class="lead" style="font-size:13px; margin-bottom:12px;">同一内容在不同文件上传时会保留浏览、点赞、收藏、评论和转发变化；这里只展示至少有两次观测的内容。</p>
+            <div id="snapshotGrowthList" class="card-grid"></div>
+          </div>
         </div>
 
         <div id="tab-logs" class="tab-panel hidden" style="margin-top:16px;">
@@ -1311,7 +1316,8 @@
       platforms: 'platforms',
       contents: 'contents',
       importJobs: 'import_jobs',
-      auditLogs: 'audit_logs'
+      auditLogs: 'audit_logs',
+      contentSnapshots: 'content_metric_snapshots'
     };
 
     const state = {
@@ -1334,7 +1340,7 @@
         category: '私域 / 直播 / 触达',
         color: 'primary',
         kpis: [], chips: [], notes: [], topics: [], hots: [], suggestions: [], kpisExtra: [],
-        contents: [], imports: [], audits: [], activities: [],
+        contents: [], imports: [], audits: [], activities: [], snapshots: [],
         week: '', month: '', conversion: '', spark: [], trendMetrics: {}, trendDates: []
       },
       {
@@ -1344,7 +1350,7 @@
         category: '文章 / 搜索 / 长内容',
         color: 'amber',
         kpis: [], chips: [], notes: [], topics: [], hots: [], suggestions: [], kpisExtra: [],
-        contents: [], imports: [], audits: [], activities: [],
+        contents: [], imports: [], audits: [], activities: [], snapshots: [],
         week: '', month: '', conversion: '', spark: [], trendMetrics: {}, trendDates: []
       },
       {
@@ -1354,7 +1360,7 @@
         category: '种草 / 搜索 / 爆款',
         color: 'rose',
         kpis: [], chips: [], notes: [], topics: [], hots: [], suggestions: [], kpisExtra: [],
-        contents: [], imports: [], audits: [], activities: [],
+        contents: [], imports: [], audits: [], activities: [], snapshots: [],
         week: '', month: '', conversion: '', spark: [], trendMetrics: {}, trendDates: []
       },
       {
@@ -1364,7 +1370,7 @@
         category: '短视频 / 完播 / 转化',
         color: 'cyan',
         kpis: [], chips: [], notes: [], topics: [], hots: [], suggestions: [], kpisExtra: [],
-        contents: [], imports: [], audits: [], activities: [],
+        contents: [], imports: [], audits: [], activities: [], snapshots: [],
         week: '', month: '', conversion: '', spark: [], trendMetrics: {}, trendDates: []
       }
     ];
@@ -1595,7 +1601,7 @@
         goal: config.goal || '',
         source: config.source || '',
         kpis: [], chips: [], notes: [], topics: [], hots: [], suggestions: [], kpisExtra: [],
-        contents: [], imports: [], audits: [], activities: [], importHashes: [],
+        contents: [], imports: [], audits: [], activities: [], importHashes: [], snapshots: [],
         week: '', month: '', conversion: '', spark: [], trendMetrics: {}, trendDates: [],
         trendRange: { mode: '30', start: '', end: '' }
       };
@@ -2003,6 +2009,7 @@
       el('topicPills').innerHTML = topics.length ? topics.map(t => `<span class="pill green">${t}</span>`).join('') : '<span class="chip">暂无专题</span>';
       el('hotPills').innerHTML = hots.length ? hots.map(t => `<span class="pill amber">${t}</span>`).join('') : '<span class="chip">暂无爆款标签</span>';
       el('suggestionList').innerHTML = suggestions.length ? suggestions.map(s => `<li><strong>${s}</strong><p>后面可变成“建议动作”按钮。</p></li>`).join('') : '<li><strong>暂无建议</strong><p>等数据进来再生成。</p></li>';
+      renderSnapshotGrowth(p);
       el('activityCount').textContent = `${activities.length} 条`;
       el('activitySummary').textContent = activities.length ? `最近 ${Math.min(activities.length, 8)} 条上传、识别和同步记录` : '记录上传、识别和同步动作';
       el('activityTimeline').innerHTML = activities.length ? activities.slice(0, 8).map(a => `<li><strong>${a[0] || ''}</strong><p>${a[1] || ''}</p></li>`).join('') : '<li><strong>暂无动态</strong><p>上传文件或从云端加载后，这里会记录最近动作。</p></li>';
@@ -2061,21 +2068,25 @@
 
     async function loadCloudStructure() {
       if (!supabaseClient) throw new Error('Supabase 客户端未初始化');
-      const [platformRows, contentRows, importRows, auditRows] = await Promise.all([
+      const [platformRows, contentRows, importRows, auditRows, snapshotRows] = await Promise.all([
         supabaseClient.from(TABLES.platforms).select('*').order('updated_at', { ascending: false }),
         supabaseClient.from(TABLES.contents).select('*').order('updated_at', { ascending: false }),
         supabaseClient.from(TABLES.importJobs).select('*').order('created_at', { ascending: false }),
-        supabaseClient.from(TABLES.auditLogs).select('*').order('created_at', { ascending: false })
+        supabaseClient.from(TABLES.auditLogs).select('*').order('created_at', { ascending: false }),
+        supabaseClient.from(TABLES.contentSnapshots).select('*').order('observed_at', { ascending: false })
       ]);
       if (platformRows.error) throw platformRows.error;
       if (contentRows.error) throw contentRows.error;
       if (importRows.error) throw importRows.error;
       if (auditRows.error) throw auditRows.error;
+      if (snapshotRows.error && !/relation .*content_metric_snapshots.*does not exist|could not find the table/i.test(snapshotRows.error.message || '')) throw snapshotRows.error;
+      if (snapshotRows.error) snapshotRows.data = [];
       return {
         platforms: (platformRows.data || []).map(platformFromDbRow),
         contents: contentRows.data || [],
         imports: importRows.data || [],
-        audits: auditRows.data || []
+        audits: auditRows.data || [],
+        snapshots: snapshotRows.data || []
       };
     }
 
@@ -2094,6 +2105,7 @@
         const mergedPlatforms = (bundle.platforms || []).map(platform => {
           const profileLabel = getFieldProfile(platform.id).label;
           const platformImports = (bundle.imports || []).filter(row => row.platform_code === platform.id);
+          const platformSnapshots = (bundle.snapshots || []).filter(row => row.platform_code === platform.id);
           const cloudContents = (bundle.contents || []).filter(row => row.platform_code === platform.id);
           const trendViews = cloudContents.map(row => Number(row.views)).map(value => Number.isFinite(value) ? value : null);
           const trendLikesRate = cloudContents.map(row => Number(row.views) > 0 && Number(row.likes) > 0 ? Number(row.likes) / Number(row.views) * 100 : null);
@@ -2106,6 +2118,7 @@
           const totalShares = cloudContents.reduce((sum, row) => sum + (Number(row.shares) || 0), 0);
           return {
             ...platform,
+            snapshots: platformSnapshots,
             cloudStats: { totalViews, totalLikes, totalFavorites, totalComments, totalShares },
             trendMetrics: {
               views: trendViews,
@@ -2536,6 +2549,7 @@
       platform.imports = [summary.importRow, ...(Array.isArray(platform.imports) ? platform.imports : [])].filter(Boolean).slice(0, 100);
       platform.audits = [summary.auditRow, ...(Array.isArray(platform.audits) ? platform.audits : [])].filter(Boolean).slice(0, 100);
       platform.activities = (summary.activityLog || []).concat(Array.isArray(platform.activities) ? platform.activities : []).slice(0, 100);
+      platform.snapshots = (Array.isArray(summary.snapshotRows) ? summary.snapshotRows : []).concat(Array.isArray(platform.snapshots) ? platform.snapshots : []).slice(0, 1000);
       platform.kpisExtra = summary.kpisExtra;
       platform.notes = summary.notes;
       platform.topics = summary.topics;
@@ -2548,6 +2562,53 @@
       const incomingTrend = summary.trendMetrics || {};
       platform.trendMetrics = Object.fromEntries(['views', 'likesRate', 'favoritesRate', 'completionRate'].map(key => [key, (Array.isArray(existingTrend[key]) ? existingTrend[key] : []).concat(Array.isArray(incomingTrend[key]) ? incomingTrend[key] : [])]));
       platform.trendDates = (Array.isArray(platform.trendDates) ? platform.trendDates : []).concat(Array.isArray(summary.trendDates) ? summary.trendDates : []);
+    }
+
+    function buildSnapshotRows(summary, platformId, operator, observedAt) {
+      return (summary.rawRows || []).map(row => ({
+        platform_code: platformId,
+        content_key: contentDedupKey(row, platformId),
+        title: row.title || '未命名内容',
+        publish_date: formatPublishDate(row.publish_date),
+        observed_at: observedAt,
+        source_file: summary.file ? summary.file.name : row.source_file || '',
+        views: row.views,
+        likes: row.likes,
+        favorites: row.favorites,
+        comments: row.comments,
+        shares: row.shares,
+        watch_time: row.watch_time,
+        engagement_total: (row.likes || 0) + (row.favorites || 0) + (row.comments || 0) + (row.shares || 0),
+        is_hot: Boolean(row.is_hot),
+        updated_by: operator
+      }));
+    }
+
+    function getSnapshotGrowthRows(platform) {
+      const snapshots = Array.isArray(platform.snapshots) ? platform.snapshots : [];
+      const grouped = new Map();
+      snapshots.forEach(row => {
+        const key = row.content_key || contentDedupKey(row, platform.id);
+        const list = grouped.get(key) || [];
+        list.push(row);
+        grouped.set(key, list);
+      });
+      return Array.from(grouped.entries()).map(([key, rows]) => {
+        const ordered = rows.slice().sort((a, b) => new Date(a.observed_at || 0) - new Date(b.observed_at || 0));
+        const first = ordered[0];
+        const latest = ordered[ordered.length - 1];
+        return { key, first, latest, count: ordered.length, viewsGrowth: (Number(latest.views) || 0) - (Number(first.views) || 0), engagementGrowth: (Number(latest.engagement_total) || 0) - (Number(first.engagement_total) || 0) };
+      }).filter(row => row.count >= 2).sort((a, b) => b.viewsGrowth - a.viewsGrowth).slice(0, 12);
+    }
+
+    function renderSnapshotGrowth(platform) {
+      const snapshots = Array.isArray(platform.snapshots) ? platform.snapshots : [];
+      const growthRows = getSnapshotGrowthRows(platform);
+      const countEl = el('snapshotCountChip');
+      const listEl = el('snapshotGrowthList');
+      if (!countEl || !listEl) return;
+      countEl.textContent = `${snapshots.length} 条历史快照`;
+      listEl.innerHTML = growthRows.length ? growthRows.map(row => `<div class="kpi"><div class="label">${row.latest.title || '未命名内容'}</div><div class="value">${formatCompactNumber(row.latest.views)} <span style="font-size:12px;color:var(--primary);">+${formatCompactNumber(row.viewsGrowth)}</span></div><div class="hint">${row.count} 次观测 · 互动变化 ${formatCompactNumber(row.engagementGrowth)} · 最近 ${formatRuntimeTime(row.latest.observed_at)}</div></div>`).join('') : '<div class="empty">暂时没有同一内容的多次观测。再次上传同一内容的最新后台数据后，这里会显示增长。</div>';
     }
 
     function getUploadPreflightKey(files, platformId, operator) {
@@ -2679,6 +2740,7 @@
           ];
           summary.file = file;
           summary.fileHash = fileHash;
+          summary.snapshotRows = buildSnapshotRows(summary, platform.id, operator, new Date().toISOString());
           summaries.push(summary);
           platform.importHashes = [fileHash, ...knownHashes].filter(Boolean);
         }
@@ -2690,6 +2752,7 @@
           contents: acc.contents.concat(summary.contents),
           trendMetrics: Object.fromEntries(Object.keys(acc.trendMetrics).map(key => [key, (acc.trendMetrics[key] || []).concat(summary.trendMetrics[key] || [])])),
           trendDates: acc.trendDates.concat(summary.trendDates),
+          snapshotRows: acc.snapshotRows.concat(summary.snapshotRows || []),
           stats: {
             rowCount: acc.stats.rowCount + summary.stats.rowCount,
             totalViews: acc.stats.totalViews + summary.stats.totalViews,
@@ -2703,10 +2766,10 @@
             profileLabel: summary.stats.profileLabel,
             detectedHeaders: Array.from(new Set(acc.stats.detectedHeaders.concat(summary.stats.detectedHeaders)))
           }
-        }), { contents: [], trendMetrics: { views: [], likesRate: [], favoritesRate: [], completionRate: [] }, trendDates: [], stats: { rowCount: 0, totalViews: 0, totalLikes: 0, totalFavorites: 0, totalComments: 0, totalShares: 0, hotCount: 0, engagementTotal: 0, engagementRate: 0, profileLabel: '', detectedHeaders: [] } });
+        }), { contents: [], trendMetrics: { views: [], likesRate: [], favoritesRate: [], completionRate: [] }, trendDates: [], snapshotRows: [], stats: { rowCount: 0, totalViews: 0, totalLikes: 0, totalFavorites: 0, totalComments: 0, totalShares: 0, hotCount: 0, engagementTotal: 0, engagementRate: 0, profileLabel: '', detectedHeaders: [] } });
         merged.stats.engagementRate = merged.stats.totalViews ? merged.stats.engagementTotal / merged.stats.totalViews * 100 : 0;
         const latest = summaries[summaries.length - 1];
-        const combined = { ...latest, contents: merged.contents, trendMetrics: merged.trendMetrics, trendDates: merged.trendDates, stats: merged.stats };
+        const combined = { ...latest, contents: merged.contents, trendMetrics: merged.trendMetrics, trendDates: merged.trendDates, snapshotRows: merged.snapshotRows, stats: merged.stats };
         mergeSummaryIntoPlatform(platform, combined);
         state.platform = platform.id;
         state.operator = operator;
@@ -2724,6 +2787,7 @@
           const cloudContentKeys = new Set((oldContents || []).map(row => contentDedupKey(row, platform.id)));
           for (const summary of summaries) {
             if (summary.fileHash && cloudHashes.has(summary.fileHash)) continue;
+            const snapshotRows = buildSnapshotRows(summary, platform.id, operator, new Date().toISOString());
             const contentRows = summary.rawRows.filter(row => {
               const key = contentDedupKey(row, platform.id);
               if (cloudContentKeys.has(key)) return false;
@@ -2734,6 +2798,7 @@
             const auditRow = { platform_code: platform.id, action_at: summary.auditRow[0], action_type: '上传', action_target: summary.file.name, source_file: summary.file.name, result: '成功', updated_by: operator, note: summary.auditRow[4], created_at: new Date().toISOString() };
             const writes = [supabaseClient.from(TABLES.importJobs).insert(importRow), supabaseClient.from(TABLES.auditLogs).insert(auditRow)];
             if (contentRows.length) writes.unshift(supabaseClient.from(TABLES.contents).insert(contentRows));
+            if (snapshotRows.length) writes.unshift(supabaseClient.from(TABLES.contentSnapshots).upsert(snapshotRows, { onConflict: 'platform_code,source_file,content_key', ignoreDuplicates: true }));
             const results = await Promise.all(writes);
             const failed = results.find(result => result.error);
             if (failed) throw failed.error;
