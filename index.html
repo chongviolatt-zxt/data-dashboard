@@ -227,9 +227,9 @@
       padding-bottom: 2px;
     }
     .hero-platform-item { min-width: 0; width: 100%; }
-    .hero-platform-item { flex:0 0 auto; display:inline-flex; align-items:center; gap:7px; padding:7px 9px; border:1px solid var(--line); border-radius:11px; background:#fff; cursor:pointer; font:inherit; color:var(--text); }
+    .hero-platform-item { flex:0 0 auto; display:inline-flex; align-items:center; gap:9px; padding:9px 11px; border:1px solid var(--line); border-radius:12px; background:#fff; cursor:pointer; font:inherit; color:var(--text); }
     .hero-platform-item:hover, .hero-platform-item.active { border-color:rgba(47,111,94,.42); background:rgba(47,111,94,.08); }
-    .hero-platform-item .platform-mark { width:25px; height:25px; border-radius:8px; font-size:10px; }
+    .hero-platform-item .platform-mark { width:34px; height:34px; border-radius:10px; font-size:12px; }
     .hero-platform-item strong { font-size:11.5px; white-space:nowrap; }
     .hero-platform-item small { color:var(--muted-2); font-size:9.5px; }
     .tag {
@@ -993,7 +993,7 @@
         </div>
         <div class="hero-platform-switcher" id="heroPlatformSwitcher">
           <div class="hero-platform-head">
-            <div><strong>快速切换平台</strong><p>选择后直接进入该平台的概览、内容、日志和复盘。</p></div>
+            <div><strong>平台切换</strong><p>选择后直接进入该平台的概览、内容、日志和复盘。</p></div>
             <span class="platform-count" id="heroPlatformCount">7</span>
           </div>
           <div class="hero-platform-list" id="heroPlatformList"></div>
@@ -1046,8 +1046,8 @@
                 <div class="kpi"><div class="label">导入批次</div><div class="value" id="homeImportBatches">0</div><div class="hint">保留操作人与文件名</div></div>
               </div>
               <div class="chart-box home-large-chart">
-                <p class="chart-caption" id="homeChartCaption">各平台浏览量对比 · 等待上传数据</p>
-                <svg class="spark" id="homeChart" viewBox="0 0 520 160" preserveAspectRatio="none"></svg>
+                <p class="chart-caption" id="homeChartCaption">各平台当前已上传数据的浏览量对比</p>
+                <svg class="spark" id="homeChart" viewBox="0 0 520 210" preserveAspectRatio="none"></svg>
                 <div class="legend" id="homeChartLegend"><span class="legend-item"><span class="swatch primary"></span> 上传数据后自动生成</span></div>
               </div>
             </div>
@@ -1888,22 +1888,38 @@
       el('homeChartCaption').textContent = dataPlatforms.length ? '各平台当前已上传数据的浏览量对比' : '各平台浏览量对比 · 上传数据后自动生成';
 
       const chart = el('homeChart');
-      const maxViews = Math.max(1, ...platforms.map(p => (Array.isArray(p.contents) ? p.contents : []).reduce((sum, row) => sum + parseDisplayedMetric(row[2]), 0)));
-      const points = platforms.map((p, index) => {
-        const views = (Array.isArray(p.contents) ? p.contents : []).reduce((sum, row) => sum + parseDisplayedMetric(row[2]), 0);
-        const x = 28 + index * (464 / Math.max(1, platforms.length - 1));
-        const y = 136 - (views / maxViews) * 104;
-        return { x, y, views, p };
-      });
-      const path = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+      const palette = ['#2f6f5e', '#c97b3f', '#b06367', '#4c8df6', '#7c5ce5', '#1f9d8a', '#e09f3e', '#d45d79', '#577590'];
+      const rows = platforms.map((p, index) => ({
+        p,
+        color: palette[index % palette.length],
+        views: (Array.isArray(p.contents) ? p.contents : []).reduce((sum, row) => sum + parseDisplayedMetric(row[2]), 0)
+      }));
+      const maxViews = Math.max(1, ...rows.map(row => row.views));
+      const chartWidth = 520;
+      const chartHeight = 210;
+      const left = 30;
+      const right = 500;
+      const top = 24;
+      const bottom = 168;
+      const slot = (right - left) / Math.max(1, rows.length);
+      const barWidth = Math.min(42, slot * .62);
+      chart.setAttribute('viewBox', `0 0 ${chartWidth} ${chartHeight}`);
       chart.innerHTML = `
-        <defs><linearGradient id="fillHomeDynamic" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="rgba(47,111,94,0.24)" /><stop offset="100%" stop-color="rgba(47,111,94,0.02)" /></linearGradient></defs>
-        <rect x="0" y="0" width="520" height="160" rx="16" fill="#fff"></rect>
-        <path d="${path} L 492 148 L 28 148 Z" fill="url(#fillHomeDynamic)"></path>
-        <path d="${path}" fill="none" stroke="#2f6f5e" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
-        ${points.map(point => `<circle cx="${point.x}" cy="${point.y}" r="5" fill="#2f6f5e"></circle>`).join('')}
+        <rect x="0" y="0" width="${chartWidth}" height="${chartHeight}" rx="16" fill="#fff"></rect>
+        <line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" stroke="#ece7dd" stroke-width="1"></line>
+        ${rows.map((row, index) => {
+          const x = left + index * slot + (slot - barWidth) / 2;
+          const height = row.views > 0 ? Math.max(5, row.views / maxViews * (bottom - top)) : 2;
+          const y = bottom - height;
+          const labelX = x + barWidth / 2;
+          return `<g>
+            <rect x="${x}" y="${y}" width="${barWidth}" height="${height}" rx="7" fill="${row.color}" opacity=".88"></rect>
+            <text x="${labelX}" y="${Math.max(16, y - 7)}" text-anchor="middle" fill="#334155" font-size="10.5" font-weight="600">${formatCompactNumber(row.views)}</text>
+            <text x="${labelX}" y="188" text-anchor="middle" fill="#64748b" font-size="10">${row.p.short}</text>
+          </g>`;
+        }).join('')}
       `;
-      el('homeChartLegend').innerHTML = points.map(point => `<span class="legend-item"><span class="swatch primary"></span>${point.p.short} ${formatCompactNumber(point.views)}</span>`).join('') || '<span class="legend-item"><span class="swatch primary"></span>暂无上传数据</span>';
+      el('homeChartLegend').innerHTML = rows.map(row => `<span class="legend-item"><span class="swatch" style="background:${row.color}"></span>${row.p.short} ${formatCompactNumber(row.views)}</span>`).join('') || '<span class="legend-item"><span class="swatch primary"></span>暂无上传数据</span>';
     }
 
     function renderHome() {
