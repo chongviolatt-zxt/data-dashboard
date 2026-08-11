@@ -220,7 +220,13 @@
     .hero-platform-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
     .hero-platform-head strong { font-size:13px; }
     .hero-platform-head p { margin:3px 0 0; color:var(--muted-2); font-size:11px; }
-    .hero-platform-list { display:flex; gap:7px; overflow-x:auto; padding-bottom:2px; }
+    .hero-platform-list {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      padding-bottom: 2px;
+    }
+    .hero-platform-item { min-width: 0; width: 100%; }
     .hero-platform-item { flex:0 0 auto; display:inline-flex; align-items:center; gap:7px; padding:7px 9px; border:1px solid var(--line); border-radius:11px; background:#fff; cursor:pointer; font:inherit; color:var(--text); }
     .hero-platform-item:hover, .hero-platform-item.active { border-color:rgba(47,111,94,.42); background:rgba(47,111,94,.08); }
     .hero-platform-item .platform-mark { width:25px; height:25px; border-radius:8px; font-size:10px; }
@@ -647,7 +653,11 @@
     }
     .platform-edit-btn:hover { color: var(--primary); background: rgba(47,111,94,.09); opacity: 1; }
     .platform-overview-only[hidden], .platform-global-overview[hidden] { display: none !important; }
-    .chart-card, .content-area {
+    .home-overview-panel { margin-top: 0; }
+    .home-all-platform-shell { margin-top: 14px; }
+    .home-large-chart { min-height: 300px; }
+    .home-large-chart .spark { height: 240px; }
+
       border: 1px solid var(--line);
       border-radius: 18px;
       background: #fff;
@@ -1015,54 +1025,40 @@
           <h3>主页总览</h3>
           <p>先看全局，再进入某个平台。这里显示当前已经上传并分析的数据，不用手动导入示例数据。</p>
         </div>
-        <div class="panel">
-          <div class="grid-2">
-            <div>
-              <div class="chip-row">
-                <span class="chip">当前操作者：<span id="operatorChip">未填写</span></span>
-                <span class="chip">已配置平台：<span id="homePlatformCount">4</span></span>
-                <span class="chip">已有数据平台：<span id="homeDataPlatformCount">0</span></span>
-                <span class="chip">最近上传：<span id="homeImportCount">0</span></span>
-              </div>
-              <div class="grid-platforms" id="platformCards"></div>
+        <div class="panel home-overview-panel">
+          <div class="chip-row">
+            <span class="chip">当前操作者：<span id="operatorChip">未填写</span></span>
+            <span class="chip">已配置平台：<span id="homePlatformCount">4</span></span>
+            <span class="chip">已有数据平台：<span id="homeDataPlatformCount">0</span></span>
+            <span class="chip">最近上传：<span id="homeImportCount">0</span></span>
+          </div>
+          <div class="shell home-all-platform-shell">
+            <div class="shell-top">
+              <div class="dots"><span></span><span></span><span></span></div>
+              <strong>全部平台数据概览</strong>
+              <span class="chip">实时汇总</span>
             </div>
-            <div class="card-grid">
-              <div class="shell">
-                <div class="shell-top">
-                  <div class="dots"><span></span><span></span><span></span></div>
-                  <strong>全部平台数据概览</strong>
-                  <span class="chip">实时汇总</span>
-                </div>
-                <div style="padding:14px;">
-                  <div class="kpi-grid" style="margin-bottom:12px;">
-                    <div class="kpi"><div class="label">总内容数</div><div class="value" id="homeTotalContents">0</div><div class="hint">当前已分析内容</div></div>
-                    <div class="kpi"><div class="label">总浏览量</div><div class="value" id="homeTotalViews">0</div><div class="hint">全部平台汇总</div></div>
-                    <div class="kpi"><div class="label">爆款内容</div><div class="value" id="homeHotCount">0</div><div class="hint">按平台阈值判定</div></div>
-                    <div class="kpi"><div class="label">导入批次</div><div class="value" id="homeImportBatches">0</div><div class="hint">保留操作人与文件名</div></div>
-                  </div>
-                  <div class="chart-box">
-                    <p class="chart-caption" id="homeChartCaption">各平台浏览量对比 · 等待上传数据</p>
-                    <svg class="spark" id="homeChart" viewBox="0 0 520 160" preserveAspectRatio="none"></svg>
-                    <div class="legend" id="homeChartLegend">
-                      <span class="legend-item"><span class="swatch primary"></span> 上传数据后自动生成</span>
-                    </div>
-                  </div>
-                </div>
+            <div style="padding:18px;">
+              <div class="kpi-grid" style="margin-bottom:14px;">
+                <div class="kpi"><div class="label">总内容数</div><div class="value" id="homeTotalContents">0</div><div class="hint">当前已分析内容</div></div>
+                <div class="kpi"><div class="label">总浏览量</div><div class="value" id="homeTotalViews">0</div><div class="hint">全部平台汇总</div></div>
+                <div class="kpi"><div class="label">爆款内容</div><div class="value" id="homeHotCount">0</div><div class="hint">按平台阈值判定</div></div>
+                <div class="kpi"><div class="label">导入批次</div><div class="value" id="homeImportBatches">0</div><div class="hint">保留操作人与文件名</div></div>
               </div>
-              <div class="shell">
-                <div class="shell-top">
-                  <strong>最近导入记录</strong>
-                  <span class="chip">Latest</span>
-                </div>
-                <div style="padding:14px;">
-                  <table class="table">
-                    <thead>
-                      <tr><th>时间</th><th>平台</th><th>文件</th><th>字段口径</th><th>条数 / 爆款</th><th>操作者</th><th>结果</th></tr>
-                    </thead>
-                    <tbody id="homeImportTable"></tbody>
-                  </table>
-                </div>
+              <div class="chart-box home-large-chart">
+                <p class="chart-caption" id="homeChartCaption">各平台浏览量对比 · 等待上传数据</p>
+                <svg class="spark" id="homeChart" viewBox="0 0 520 160" preserveAspectRatio="none"></svg>
+                <div class="legend" id="homeChartLegend"><span class="legend-item"><span class="swatch primary"></span> 上传数据后自动生成</span></div>
               </div>
+            </div>
+          </div>
+          <div class="shell" style="margin-top:14px;">
+            <div class="shell-top"><strong>最近导入记录</strong><span class="chip">Latest</span></div>
+            <div style="padding:14px; overflow:auto;">
+              <table class="table">
+                <thead><tr><th>时间</th><th>平台</th><th>文件</th><th>字段口径</th><th>条数 / 爆款</th><th>操作者</th><th>结果</th></tr></thead>
+                <tbody id="homeImportTable"></tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -1911,18 +1907,6 @@
     }
 
     function renderHome() {
-      const cards = el('platformCards');
-      cards.innerHTML = platforms.map(p => `
-        <button type="button" class="platform-card ${p.id === state.platform ? 'active' : ''}" data-platform="${p.id}" onclick="setPlatform('${p.id}')">
-          <strong>${p.name}</strong>
-          <div class="meta">${p.category}</div>
-          <div class="meta" style="margin-top:8px;">支持独立看板、独立日志、独立复盘。</div>
-          <span class="num">点进去看 ${p.short}</span>
-        </button>
-      `).join('');
-      cards.querySelectorAll('[data-platform]').forEach(btn => {
-        btn.addEventListener('click', () => setPlatform(btn.dataset.platform));
-      });
       const aggregatedHome = [];
       platforms.forEach(p => {
         (Array.isArray(p.imports) ? p.imports : []).forEach(row => {
