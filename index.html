@@ -208,6 +208,24 @@
       position: relative;
       z-index: 1;
     }
+    .hero-platform-switcher {
+      margin-top: 18px;
+      padding: 13px 14px;
+      border: 1px solid rgba(47,111,94,.16);
+      border-radius: 16px;
+      background: rgba(255,255,255,.76);
+      position: relative;
+      z-index: 1;
+    }
+    .hero-platform-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
+    .hero-platform-head strong { font-size:13px; }
+    .hero-platform-head p { margin:3px 0 0; color:var(--muted-2); font-size:11px; }
+    .hero-platform-list { display:flex; gap:7px; overflow-x:auto; padding-bottom:2px; }
+    .hero-platform-item { flex:0 0 auto; display:inline-flex; align-items:center; gap:7px; padding:7px 9px; border:1px solid var(--line); border-radius:11px; background:#fff; cursor:pointer; font:inherit; color:var(--text); }
+    .hero-platform-item:hover, .hero-platform-item.active { border-color:rgba(47,111,94,.42); background:rgba(47,111,94,.08); }
+    .hero-platform-item .platform-mark { width:25px; height:25px; border-radius:8px; font-size:10px; }
+    .hero-platform-item strong { font-size:11.5px; white-space:nowrap; }
+    .hero-platform-item small { color:var(--muted-2); font-size:9.5px; }
     .tag {
       padding: 8px 12px;
       border-radius: 999px;
@@ -593,12 +611,36 @@
     .platform-status-dot.ready { background: var(--green); box-shadow: 0 0 0 3px rgba(42,140,109,0.10); }
     .platform-arrow { color: #a7b0be; font-size: 17px; transition: transform .18s ease; }
     .sidebar .item:hover .platform-arrow, .sidebar .item.active .platform-arrow { color: var(--primary); transform: translateX(2px); }
+    .platform-workspace-summary { grid-template-columns: 1fr; }
+    .platform-workspace-summary > .sidebar { display: none !important; }
+    .platform-workspace-summary .content-area { width: 100%; }
+    #platformList {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+    }
+    #platformList .item {
+      width: auto;
+      min-width: 0;
+      gap: 7px;
+      padding: 8px;
+      min-height: 48px;
+      margin-bottom: 0;
+      border-radius: 12px;
+    }
+    #platformList .platform-mark { width: 28px; height: 28px; border-radius: 9px; font-size: 11px; }
+    #platformList .platform-switch-copy { overflow: hidden; }
+    #platformList .item strong { font-size: 12px; margin-bottom: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #platformList .platform-category, #platformList .platform-meta { font-size: 9.5px; }
+    #platformList .platform-meta { margin-top: 3px; gap: 4px; }
+    #platformList .platform-arrow { font-size: 14px; }
     .platform-nav-only { grid-template-columns: 1fr; }
-    .platform-nav-only .sidebar { display: flex; gap: 8px; overflow-x: auto; padding: 9px; }
+    .platform-nav-only .sidebar { display: block; padding: 9px; }
     .platform-nav-only .platform-switcher-head { display: none; }
-    .platform-nav-only .sidebar .item { min-width: 156px; margin: 0; padding: 9px 10px; }
-    .platform-nav-only .platform-category, .platform-nav-only .platform-meta { display: none; }
-    .platform-nav-only .platform-mark { width: 30px; height: 30px; border-radius: 9px; }
+    .platform-nav-only #platformList { display: flex; gap: 7px; overflow-x: auto; padding-bottom: 2px; }
+    .platform-nav-only #platformList .item { flex: 0 0 142px; }
+    .platform-nav-only #platformList .platform-category, .platform-nav-only #platformList .platform-meta { display: none; }
+    .platform-nav-only #platformList .platform-mark { width: 26px; height: 26px; border-radius: 8px; }
     .platform-edit-btn {
       border: 0; background: transparent; color: var(--muted-2); padding: 4px 5px;
       border-radius: 7px; cursor: pointer; font-size: 11px; opacity: .72;
@@ -930,16 +972,21 @@
       <div class="card hero-main">
         <span class="eyebrow" id="dataSourceBadge">数据看板 · 本地页面已就绪</span>
         <h2 class="hero-title">一处查看各平台表现，上传官方后台数据后自动生成分析</h2>
-        <p class="lead">
-          选择微信视频号、微信公众号、小红书或抖音，上传平台官方后台导出的 CSV / Excel 文件。系统会按不同平台的字段口径识别内容、浏览和互动数据，并保留原始文件名、分析结果、操作人与上传时间。
+        <p class="lead" id="heroLead">
+          选择 7 个平台中的任意入口，上传平台官方后台导出的 CSV / Excel 文件。系统会按平台字段口径识别内容、浏览和互动数据，并保留文件名、分析结果、操作人与上传时间。
         </p>
-        <div class="hero-tags">
-          <span class="tag">平台独立看板</span>
-          <span class="tag">CSV / Excel 上传</span>
-          <span class="tag">自动字段识别</span>
-          <span class="tag">互动与爆款分析</span>
+        <div class="hero-tags" id="heroTags">
+          <span class="tag">7 个平台独立工作台</span>
+          <span class="tag">官方后台文件上传</span>
+          <span class="tag">真实指标分析</span>
           <span class="tag">导入与操作留痕</span>
-          <span class="tag">周度 / 月度复盘</span>
+        </div>
+        <div class="hero-platform-switcher" id="heroPlatformSwitcher">
+          <div class="hero-platform-head">
+            <div><strong>快速切换平台</strong><p>选择后直接进入该平台的概览、内容、日志和复盘。</p></div>
+            <span class="platform-count" id="heroPlatformCount">7</span>
+          </div>
+          <div class="hero-platform-list" id="heroPlatformList"></div>
         </div>
       </div>
       <aside class="card hero-side">
@@ -1032,7 +1079,7 @@
           </div>
         </div>
 
-        <div class="grid-2" id="platformGlobalSummary">
+        <div class="grid-2 platform-workspace-summary" id="platformGlobalSummary">
           <div class="sidebar">
             <div class="platform-switcher-head">
               <div>
@@ -2381,6 +2428,19 @@
       return /^#[0-9a-f]{6}$/i.test(String(p.color || '')) ? ` style="background:${p.color}"` : '';
     }
 
+    function renderHeroPlatformList() {
+      const list = el('heroPlatformList');
+      if (!list) return;
+      list.innerHTML = platforms.map(platform => {
+        const count = Array.isArray(platform.contents) ? platform.contents.length : 0;
+        return `<button type="button" class="hero-platform-item ${platform.id === state.platform ? 'active' : ''}" onclick="setPlatform('${platform.id}')">
+          <span class="platform-mark ${platform.color || 'primary'}"${getPlatformMarkStyle(platform)}>${getPlatformMark(platform)}</span>
+          <span><strong>${platform.name}</strong><small>${count ? `${count} 条内容` : '等待数据'}</small></span>
+        </button>`;
+      }).join('');
+      el('heroPlatformCount').textContent = String(platforms.length);
+    }
+
     function renderPlatformList() {
       el('platformList').innerHTML = platforms.map(p => {
         const contentCount = Array.isArray(p.contents) ? p.contents.length : 0;
@@ -2407,6 +2467,7 @@
 
     function renderAll() {
       renderHome();
+      renderHeroPlatformList();
       renderPlatformList();
       renderPlatform();
       renderRuntimeStatus();
