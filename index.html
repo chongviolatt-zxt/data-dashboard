@@ -147,9 +147,7 @@
     .btn:active { transform: translateY(0); }
     .hero {
       margin-top: 16px;
-      display: grid;
-      grid-template-columns: 1.45fr 0.9fr;
-      gap: 16px;
+      display: block;
     }
     .card {
       background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,255,255,0.99));
@@ -1007,20 +1005,6 @@
           <div class="hero-platform-list" id="heroPlatformList"></div>
         </div>
       </div>
-      <aside class="card hero-side">
-        <div class="side-block">
-          <div class="side-title"><i></i> 当前状态</div>
-          <p class="runtime-summary" id="runtimeSummary">正在读取当前页面状态…</p>
-          <dl class="kv">
-            <dt>所在页面</dt><dd id="modeText">主页 Home</dd>
-            <dt>当前平台</dt><dd id="platformText">微信视频号</dd>
-            <dt>当前操作者</dt><dd id="operatorEcho">未填写</dd>
-            <dt>数据来源</dt><dd id="sourceText">尚未加载数据</dd>
-            <dt>当前数据量</dt><dd id="dataCountText">0 条内容 · 0 个批次</dd>
-            <dt>最近更新</dt><dd id="lastUpdatedText">暂无记录</dd>
-          </dl>
-        </div>
-      </aside>
     </section>
 
     <div class="main">
@@ -1656,7 +1640,7 @@
       } catch (err) {
         console.error('renderPlatform failed:', err);
         const p = getPlatform();
-        el('platformText').textContent = p.name || '未命名平台';
+        if (el('platformText')) el('platformText').textContent = p.name || '未命名平台';
         el('platformHeader').textContent = `${p.name || '未命名平台'} · 平台工作台`;
       }
     }
@@ -1714,13 +1698,13 @@
 
       if (el('dataSourceBadge')) el('dataSourceBadge').textContent = sourceBadge;
       if (el('modeText')) el('modeText').textContent = pageLabel;
-      el('platformText').textContent = platform.name || '未命名平台';
-      el('operatorEcho').textContent = operatorLabel;
-      el('operatorChip').textContent = operatorLabel;
-      el('sourceText').textContent = sourceLabel;
-      el('dataCountText').textContent = state.view === 'home' ? `${totalContents} 条内容 · ${totalImports} 个批次` : currentDataLabel;
-      el('lastUpdatedText').textContent = formatRuntimeTime(latest);
-      el('runtimeSummary').textContent = summary;
+      if (el('platformText')) el('platformText').textContent = platform.name || '未命名平台';
+      if (el('operatorEcho')) el('operatorEcho').textContent = operatorLabel;
+      if (el('operatorChip')) el('operatorChip').textContent = operatorLabel;
+      if (el('sourceText')) el('sourceText').textContent = sourceLabel;
+      if (el('dataCountText')) el('dataCountText').textContent = state.view === 'home' ? `${totalContents} 条内容 · ${totalImports} 个批次` : currentDataLabel;
+      if (el('lastUpdatedText')) el('lastUpdatedText').textContent = formatRuntimeTime(latest);
+      if (el('runtimeSummary')) el('runtimeSummary').textContent = summary;
     }
 
     function toggleMainView() {
@@ -2357,7 +2341,7 @@
       const hots = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.hots) ? p.hots : [];
       const suggestions = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.suggestions) ? p.suggestions : [];
       const activities = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.activities) ? p.activities : [];
-      el('platformText').textContent = p.name || '未命名平台';
+      if (el('platformText')) el('platformText').textContent = p.name || '未命名平台';
       el('platformHeader').textContent = `${p.name || '未命名平台'} · 平台工作台`;
       el('platformChips').innerHTML = chips.map(t => `<span class="chip">${t}</span>`).join('') || '<span class="chip">暂无标签</span>';
       el('platformKpis').innerHTML = kpis.length ? kpis.map(k => `
