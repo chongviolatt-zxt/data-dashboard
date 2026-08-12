@@ -374,21 +374,34 @@
     .tab {
       border: none;
       background: transparent;
-      padding: 8px 11px;
+      padding: 10px 13px;
+      min-height: 58px;
       border-radius: 12px;
       color: #475569;
       cursor: pointer;
       font: inherit;
       text-align: left;
     }
-    .tab strong { display: block; font-size: 12.5px; }
-    .tab span { display: block; margin-top: 2px; color: var(--muted-2); font-size: 9.5px; white-space: nowrap; }
+    .tab strong { display: block; font-size: 15px; line-height: 1.35; }
+    .tab span { display: block; margin-top: 4px; color: var(--muted-2); font-size: 11px; line-height: 1.35; white-space: nowrap; }
     .tab.active {
       background: var(--primary-soft);
       color: var(--primary);
     }
     .tab.active strong { font-weight: 700; }
     .tab.active span { color: var(--primary); opacity: .78; }
+    #platformPageTitle {
+      color: var(--text);
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: -.035em;
+    }
+    .platform-context-card h4 { margin-bottom: 0; font-size: 18px; }
+    .platform-context-card .chart-caption { line-height: 1.55; }
+    .platform-context-card .list { display: grid; gap: 9px; }
+    .platform-context-card .list li { padding: 11px 12px; border: 1px solid var(--line-soft); border-radius: 12px; background: rgba(247,245,240,.52); line-height: 1.55; }
+    .platform-context-card .list li strong { display: block; margin-bottom: 2px; color: var(--text); font-size: 12.5px; }
+    .platform-context-card .list li p { margin: 0; color: var(--muted); font-size: 12px; }
     .grid-platforms {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1060,7 +1073,7 @@
 
       <section class="section" id="platformSection">
         <div class="section-head">
-          <h3>平台页 Platform</h3>
+          <h3 id="platformPageTitle">微信视频号 · 平台工作台</h3>
           <div class="tabs">
             <button type="button" class="tab active" data-tab="overview" onclick="switchTab('overview')"><strong>概览</strong><span>指标、趋势和最近动作</span></button>
             <button type="button" class="tab" data-tab="contents" onclick="switchTab('contents')"><strong>内容</strong><span>专题、爆款和建议</span></button>
@@ -1081,7 +1094,7 @@
             <div id="platformList"></div>
           </div>
           <div class="content-area platform-overview-only" id="platformOverviewSummary">
-            <h4 id="platformHeader">微信视频号 · 平台工作台</h4>
+            <h4 id="platformHeader" hidden>微信视频号 · 平台工作台</h4>
             <p class="workspace-copy">这里是当前平台的运营控制台：看真实指标、趋势、内容明细、导入批次和后续复盘，不再用示例数字填充。</p>
             <div class="chip-row" id="platformChips"></div>
             <div class="kpi-grid" id="platformKpis"></div>
@@ -1659,7 +1672,12 @@
       sections.home.classList.toggle('active', view === 'home');
       sections.platform.classList.toggle('active', view === 'platform');
       el('switchViewBtn').textContent = view === 'home' ? '进入平台页' : '返回首页';
+      renderHeroPlatformList();
       renderRuntimeStatus();
+      const target = view === 'platform' ? sections.platform : sections.home;
+      if (target) {
+        requestAnimationFrame(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+      }
     }
 
     function setPlatform(id) {
@@ -2393,6 +2411,48 @@
       el('conversionReview').textContent = stats.growthRows.length ? `已有 ${stats.growthRows.length} 条内容出现多次指标观测，可优先把增长持续的内容接入咨询、私信或落地页等业务动作。当前页面只提示方向，不虚构转化数据。` : '当前还没有同一内容的多次指标观测，暂时不能判断内容增长与业务结果的关系。';
     }
 
+    function buildPlatformContextNotes(platform) {
+      const stats = getPlatformRuntimeStats(platform);
+      const profile = getFieldProfile(platform.id);
+      const keywordGroups = profile && profile.keywords ? profile.keywords : {};
+      const metricLabels = [
+        keywordGroups.views?.length ? '浏览 / 播放 / 阅读' : '',
+        keywordGroups.likes?.length ? '点赞' : '',
+        keywordGroups.favorites?.length ? '收藏' : '',
+        keywordGroups.comments?.length ? '评论' : '',
+        keywordGroups.shares?.length ? '转发' : '',
+        keywordGroups.watchTime?.length ? '完成率' : ''
+      ].filter(Boolean);
+      const dates = stats.datedContents.map(row => normalizePublishDate(row[1])).filter(Boolean).sort();
+      const dateCoverage = dates.length ? `${dates[0]} 至 ${dates[dates.length - 1]}` : '';
+      const latestFile = stats.latestImport?.[1] || '';
+      const sourceLabel = latestFile ? `最近导入：${latestFile}` : '尚未导入官方后台文件';
+      const notes = [
+        {
+          title: '平台定位',
+          text: `${platform.name || '当前平台'}主要关注${platform.category || platform.description || '内容表现'}；这里只展示该平台自己的上传数据。`
+        },
+        {
+          title: '识别口径',
+          text: metricLabels.length ? `已配置识别 ${metricLabels.join('、')} 等字段；缺失指标会保持为空，不跨平台补值。` : '当前尚未配置可识别的数值指标，请在平台配置中补充字段关键词。'
+        },
+        {
+          title: '数据状态',
+          text: stats.contents.length ? `${sourceLabel}；当前有 ${stats.contents.length} 条去重内容${dateCoverage ? `，日期覆盖 ${dateCoverage}` : '，但尚未识别到有效日期'}。` : `${sourceLabel}；上传后才会生成指标、趋势、爆款判断和复盘。`
+        }
+      ];
+      const uploadedNotes = Array.isArray(platform.notes) ? platform.notes.filter(Boolean).slice(0, 2) : [];
+      if (uploadedNotes.length) {
+        notes.push({ title: '本次分析摘要', text: uploadedNotes.join(' ') });
+      } else {
+        notes.push({
+          title: '下一步',
+          text: stats.contents.length ? (stats.snapshots.length ? '继续按周期上传同口径文件，用历史快照观察内容增长和衰减。' : '下一次上传同一内容的新指标后，系统会开始生成历史增长快照。') : '先上传该平台官方后台导出的 CSV 或 Excel；系统会先预检字段、日期和重复记录。'
+        });
+      }
+      return notes;
+    }
+
     function renderPlatform() {
       const p = getPlatform() || {};
       const overviewActive = state.tab === 'overview';
@@ -2401,7 +2461,7 @@
       el('platformGlobalAnalysis').hidden = !overviewActive;
       const chips = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.chips) ? p.chips : [];
       const kpis = getPlatformKpis(p);
-      const notes = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.notes) ? p.notes : [];
+      const contextNotes = buildPlatformContextNotes(p);
       const contents = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.contents) ? p.contents : [];
       const imports = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.imports) ? p.imports : [];
       const audits = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.audits) ? p.audits : [];
@@ -2410,13 +2470,15 @@
       const suggestions = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.suggestions) ? p.suggestions : [];
       const activities = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.activities) ? p.activities : [];
       if (el('platformText')) el('platformText').textContent = p.name || '未命名平台';
-      el('platformHeader').textContent = `${p.name || '未命名平台'} · 平台工作台`;
+      const platformTitle = `${p.name || '未命名平台'} · 平台工作台`;
+      el('platformPageTitle').textContent = platformTitle;
+      el('platformHeader').textContent = platformTitle;
       el('platformChips').innerHTML = chips.map(t => `<span class="chip">${t}</span>`).join('') || '<span class="chip">暂无标签</span>';
       el('platformKpis').innerHTML = kpis.length ? kpis.map(k => `
         <div class="kpi"><div class="label">${k.label}</div><div class="value">${k.value}</div>${k.hint ? `<div class="hint">${k.hint}</div>` : ''}</div>
       `).join('') : '<div class="empty">当前平台还没有可用的数值指标。上传官方后台数据后，只显示文件里真实存在并成功识别的指标。</div>';
       renderTrendChart(p);
-      el('platformNotes').innerHTML = notes.length ? notes.map(n => `<li><strong>${n}</strong></li>`).join('') : '<li><strong>暂无平台说明</strong><p>上传官方后台数据后，这里会显示字段口径、数据范围和可执行结论。</p></li>';
+      el('platformNotes').innerHTML = contextNotes.map(note => `<li><strong>${escapeHtml(note.title)}</strong><p>${escapeHtml(note.text)}</p></li>`).join('');
       el('contentTable').innerHTML = contents.length ? contents.map(row => `
         <tr><td>${row[0] || ''}</td><td>${normalizePublishDate(row[1]) || '日期未识别'}</td><td>${row[2] || ''}</td><td>${row[3] || ''}</td><td><span class="status ${row[4] === '待优化' ? 'warn' : row[4] === '观察' ? 'warn' : ''}">${row[4] || ''}</span></td></tr>
       `).join('') : '<tr><td colspan="5"><div class="empty">暂无内容数据</div></td></tr>';
@@ -2481,7 +2543,7 @@
         const description = escapeHtml(platform.category || platform.description || '未填写平台介绍');
         const mark = escapeHtml(getPlatformMark(platform));
         const id = String(platform.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
-        return `<div class="hero-platform-item ${platform.id === state.platform ? 'active' : ''}" role="button" tabindex="0" onclick="setPlatform('${id}')" onkeydown="if(event.key==='Enter'||event.key===' ')setPlatform('${id}')">
+        return `<div class="hero-platform-item ${state.view === 'platform' && platform.id === state.platform ? 'active' : ''}" role="button" tabindex="0" onclick="setPlatform('${id}')" onkeydown="if(event.key==='Enter'||event.key===' ')setPlatform('${id}')">
           <span class="platform-mark ${platform.color || 'primary'}"${getPlatformMarkStyle(platform)}>${mark}</span>
           <span class="hero-platform-copy"><strong>${name}</strong><span class="hero-platform-description">${description}</span><span class="hero-platform-meta">${count ? `${count} 条内容` : '等待数据'} · 点击进入详情</span></span>
           <button type="button" class="hero-platform-edit" title="编辑平台入口" onclick="event.stopPropagation(); openEditPlatform('${id}')">编辑</button>
@@ -3434,10 +3496,11 @@
         renderPlatform();
       }
       if (e.target.id === 'switchViewBtn') {
-        setView(state.view === 'home' ? 'platform' : 'home');
-        if (state.view === 'platform') renderPlatform();
+        // 顶部按钮已有 onclick="toggleMainView()"，这里不再重复切换，避免一次点击来回执行两次。
       }
-      if (e.target.id === 'goHomeBtn') setView('home');
+      if (e.target.id === 'goHomeBtn') {
+        // 主页按钮已有 onclick="setView('home')"，这里不再重复执行。
+      }
       if (e.target.id === 'syncCloudBtn') syncFromCloud();
       if (e.target.id === 'saveCloudBtn') saveCurrentToCloud();
       if (e.target.id === 'openUploadBtn') el('uploadModal').classList.add('show');
