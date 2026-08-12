@@ -398,10 +398,26 @@
     }
     .platform-context-card h4 { margin-bottom: 0; font-size: 18px; }
     .platform-context-card .chart-caption { line-height: 1.55; }
-    .platform-context-card .list { display: grid; gap: 9px; }
-    .platform-context-card .list li { padding: 11px 12px; border: 1px solid var(--line-soft); border-radius: 12px; background: rgba(247,245,240,.52); line-height: 1.55; }
-    .platform-context-card .list li strong { display: block; margin-bottom: 2px; color: var(--text); font-size: 12.5px; }
-    .platform-context-card .list li p { margin: 0; color: var(--muted); font-size: 12px; }
+    .platform-context-card .list { display: grid; gap: 10px; }
+    .platform-context-card .list::before { display: none; }
+    .platform-context-card .list li {
+      min-height: 66px;
+      padding: 13px 14px 13px 44px;
+      border: 1px solid var(--line-soft);
+      border-radius: 12px;
+      background: rgba(247,245,240,.52);
+      line-height: 1.55;
+    }
+    .platform-context-card .list li::before {
+      left: 15px;
+      top: 17px;
+      width: 14px;
+      height: 14px;
+      border-width: 3px;
+      box-sizing: border-box;
+    }
+    .platform-context-card .list li strong { display: block; margin-bottom: 4px; color: var(--text); font-size: 13px; line-height: 1.4; }
+    .platform-context-card .list li p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
     .grid-platforms {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
