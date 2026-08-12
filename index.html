@@ -496,6 +496,42 @@
       flex-wrap: wrap;
       margin-bottom: 12px;
     }
+    .content-filter-bar {
+      display: grid;
+      grid-template-columns: minmax(180px, 1.6fr) repeat(3, minmax(120px, .8fr));
+      gap: 8px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line-soft);
+      background: #fff;
+    }
+    .content-filter-control {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fcfcfb;
+      padding: 8px 10px;
+      color: var(--text);
+      font: inherit;
+      font-size: 12px;
+      outline: none;
+    }
+    .content-filter-control:focus {
+      border-color: rgba(47,111,94,.5);
+      box-shadow: 0 0 0 3px rgba(47,111,94,.08);
+    }
+    .content-filter-summary {
+      padding: 9px 14px 0;
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+    @media (max-width: 760px) {
+      .content-filter-bar { grid-template-columns: 1fr 1fr; }
+      .content-filter-bar .content-search { grid-column: 1 / -1; }
+    }
+    @media (max-width: 480px) {
+      .content-filter-bar { grid-template-columns: 1fr; }
+      .content-filter-bar .content-search { grid-column: auto; }
+    }
     .table {
       width: 100%;
       border-collapse: collapse;
@@ -1166,7 +1202,30 @@
           <div class="grid-2 overview-content-grid">
             <div class="shell">
               <div class="shell-top"><strong>平台内容明细</strong><span class="chip">真实内容记录</span></div>
-              <div style="padding:14px; overflow:auto;">
+              <div class="content-filter-bar">
+                <input class="content-filter-control content-search" id="contentSearch" type="search" placeholder="搜索内容标题" aria-label="搜索内容标题">
+                <select class="content-filter-control" id="contentStatusFilter" aria-label="筛选内容状态">
+                  <option value="all">全部状态</option>
+                  <option value="hot">仅看爆款</option>
+                  <option value="normal">非爆款内容</option>
+                </select>
+                <select class="content-filter-control" id="contentDateFilter" aria-label="筛选内容日期">
+                  <option value="all">全部日期</option>
+                  <option value="7">最近 7 天</option>
+                  <option value="30">最近 30 天</option>
+                  <option value="90">最近 90 天</option>
+                  <option value="undated">日期未识别</option>
+                </select>
+                <select class="content-filter-control" id="contentSort" aria-label="内容排序方式">
+                  <option value="views_desc">浏览量从高到低</option>
+                  <option value="views_asc">浏览量从低到高</option>
+                  <option value="date_desc">日期从新到旧</option>
+                  <option value="date_asc">日期从旧到新</option>
+                  <option value="title_asc">标题正序</option>
+                </select>
+              </div>
+              <div class="content-filter-summary" id="contentFilterSummary">共 0 条内容</div>
+              <div style="padding:10px 14px 14px; overflow:auto;">
                 <table class="table">
                   <thead>
                     <tr><th>内容标题</th><th>日期</th><th>浏览</th><th>互动</th><th>状态</th></tr>
@@ -1510,7 +1569,8 @@
       cloudStatus: supabaseClient ? 'ready' : 'unavailable',
       statusMessage: '',
       uploadPreflightKey: '',
-      uploadPreflightResult: null
+      uploadPreflightResult: null,
+      contentFilters: {}
     };
 
     const platforms = [
@@ -2487,6 +2547,97 @@
       return notes;
     }
 
+    function getContentFilters(platformId) {
+      if (!state.contentFilters[platformId]) {
+        state.contentFilters[platformId] = { search: '', status: 'all', date: 'all', sort: 'views_desc' };
+      }
+      return state.contentFilters[platformId];
+    }
+
+    function getFilteredContentRows(platform) {
+      const rows = Array.isArray(platform.contents) ? platform.contents.slice() : [];
+      const filters = getContentFilters(platform.id);
+      const search = String(filters.search || '').trim().toLowerCase();
+      const validDates = rows.map(row => normalizePublishDate(row[1])).filter(Boolean).sort();
+      const latestDate = validDates[validDates.length - 1] || '';
+      let cutoff = '';
+      if (/^(7|30|90)$/.test(filters.date) && latestDate) {
+        const cutoffDate = new Date(`${latestDate}T00:00:00Z`);
+        cutoffDate.setUTCDate(cutoffDate.getUTCDate() - (Number(filters.date) - 1));
+        cutoff = cutoffDate.toISOString().slice(0, 10);
+      }
+      const filtered = rows.filter(row => {
+        const title = String(row[0] || '').toLowerCase();
+        const date = normalizePublishDate(row[1]);
+        const isHot = row[4] === '爆款';
+        if (search && !title.includes(search)) return false;
+        if (filters.status === 'hot' && !isHot) return false;
+        if (filters.status === 'normal' && isHot) return false;
+        if (filters.date === 'undated' && date) return false;
+        if (cutoff && (!date || date < cutoff || date > latestDate)) return false;
+        return true;
+      });
+      const compareViews = (a, b, direction) => {
+        const aHasValue = String(a[2] ?? '').trim() !== '';
+        const bHasValue = String(b[2] ?? '').trim() !== '';
+        if (aHasValue !== bHasValue) return aHasValue ? -1 : 1;
+        return (parseDisplayedMetric(a[2]) - parseDisplayedMetric(b[2])) * direction;
+      };
+      filtered.sort((a, b) => {
+        if (filters.sort === 'views_asc') return compareViews(a, b, 1);
+        if (filters.sort === 'date_desc') return (normalizePublishDate(b[1]) || '').localeCompare(normalizePublishDate(a[1]) || '');
+        if (filters.sort === 'date_asc') return (normalizePublishDate(a[1]) || '9999-99-99').localeCompare(normalizePublishDate(b[1]) || '9999-99-99');
+        if (filters.sort === 'title_asc') return String(a[0] || '').localeCompare(String(b[0] || ''), 'zh-CN');
+        return compareViews(a, b, -1);
+      });
+      return filtered;
+    }
+
+    function renderContentTable(platform) {
+      const allRows = Array.isArray(platform.contents) ? platform.contents : [];
+      const rows = getFilteredContentRows(platform);
+      const filters = getContentFilters(platform.id);
+      const searchInput = el('contentSearch');
+      const statusSelect = el('contentStatusFilter');
+      const dateSelect = el('contentDateFilter');
+      const sortSelect = el('contentSort');
+      if (searchInput) {
+        searchInput.value = filters.search;
+        searchInput.oninput = event => {
+          filters.search = event.target.value;
+          renderContentTable(platform);
+        };
+      }
+      if (statusSelect) {
+        statusSelect.value = filters.status;
+        statusSelect.onchange = event => {
+          filters.status = event.target.value;
+          renderContentTable(platform);
+        };
+      }
+      if (dateSelect) {
+        dateSelect.value = filters.date;
+        dateSelect.onchange = event => {
+          filters.date = event.target.value;
+          renderContentTable(platform);
+        };
+      }
+      if (sortSelect) {
+        sortSelect.value = filters.sort;
+        sortSelect.onchange = event => {
+          filters.sort = event.target.value;
+          renderContentTable(platform);
+        };
+      }
+      const hasFilter = Boolean(String(filters.search || '').trim()) || filters.status !== 'all' || filters.date !== 'all';
+      if (el('contentFilterSummary')) {
+        el('contentFilterSummary').textContent = hasFilter ? `筛选后 ${rows.length} 条 / 共 ${allRows.length} 条` : `共 ${allRows.length} 条内容`;
+      }
+      el('contentTable').innerHTML = rows.length ? rows.map(row => `
+        <tr><td>${escapeHtml(row[0] || '')}</td><td>${escapeHtml(normalizePublishDate(row[1]) || '日期未识别')}</td><td>${escapeHtml(row[2] || '')}</td><td>${escapeHtml(row[3] || '')}</td><td><span class="status ${row[4] === '待优化' || row[4] === '观察' ? 'warn' : ''}">${escapeHtml(row[4] || '')}</span></td></tr>
+      `).join('') : `<tr><td colspan="5"><div class="empty">${allRows.length ? '没有符合当前筛选条件的内容。' : '暂无内容数据'}</div></td></tr>`;
+    }
+
     function renderPlatform() {
       const p = getPlatform() || {};
       const overviewActive = state.tab === 'overview';
@@ -2513,9 +2664,7 @@
       `).join('') : '<div class="empty">当前平台还没有可用的数值指标。上传官方后台数据后，只显示文件里真实存在并成功识别的指标。</div>';
       renderTrendChart(p);
       el('platformNotes').innerHTML = contextNotes.map(note => `<li><strong>${escapeHtml(note.title)}</strong><p>${escapeHtml(note.text)}</p></li>`).join('');
-      el('contentTable').innerHTML = contents.length ? contents.map(row => `
-        <tr><td>${row[0] || ''}</td><td>${normalizePublishDate(row[1]) || '日期未识别'}</td><td>${row[2] || ''}</td><td>${row[3] || ''}</td><td><span class="status ${row[4] === '待优化' ? 'warn' : row[4] === '观察' ? 'warn' : ''}">${row[4] || ''}</span></td></tr>
-      `).join('') : '<tr><td colspan="5"><div class="empty">暂无内容数据</div></td></tr>';
+      renderContentTable(p);
       el('importLogTable').innerHTML = imports.length ? imports.map(row => {
         const note = row[3] || '';
         return `<tr><td>${row[0] || ''}</td><td>${row[1] || ''}</td><td>${row[5] || '-'}</td><td>${row[6] || '-'}</td><td>${row[2] || ''}</td><td>${note}</td><td><span class="status">${row[4] || ''}</span></td></tr>`;
