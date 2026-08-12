@@ -249,12 +249,12 @@
     .platform-hero-main .hero-platform-head { margin-bottom: 14px; }
     .platform-hero-main .hero-platform-head strong { font-size: 20px; }
     .platform-hero-main .hero-platform-head p { font-size: 12px; }
-    .platform-hero-main .hero-platform-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-    .platform-hero-main .hero-platform-item { min-height: 142px; padding: 16px; gap: 14px; align-items: flex-start; }
-    .platform-hero-main .hero-platform-item .platform-mark { width: 68px; height: 68px; border-radius: 20px; font-size: 23px; }
-    .platform-hero-main .hero-platform-item strong { font-size: 16px; margin-top: 3px; }
-    .platform-hero-main .hero-platform-description { font-size: 12px; line-height: 1.55; }
-    .platform-hero-main .hero-platform-meta { margin-top: 9px; }
+    .platform-hero-main .hero-platform-list { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .platform-hero-main .hero-platform-item { min-height: 92px; padding: 11px 12px; gap: 10px; align-items: center; }
+    .platform-hero-main .hero-platform-item .platform-mark { width: 48px; height: 48px; border-radius: 14px; font-size: 18px; }
+    .platform-hero-main .hero-platform-item strong { font-size: 14px; margin-top: 0; }
+    .platform-hero-main .hero-platform-description { font-size: 11px; line-height: 1.4; -webkit-line-clamp: 1; }
+    .platform-hero-main .hero-platform-meta { margin-top: 5px; font-size: 10px; }
     .hero-side {
       padding: 18px;
       display: grid;
@@ -899,6 +899,9 @@
       padding: 20px;
       z-index: 60;
     }
+    .hidden { display: none !important; }
+    .tab-panel[hidden], .tab-panel.hidden { display: none !important; }
+    .tab-panel:not([hidden]):not(.hidden) { display: block; }
     .modal-mask.show { display: flex; }
     .modal {
       width: min(760px, 100%);
@@ -956,7 +959,7 @@
     @media (max-width:680px) { .field-profile-grid { grid-template-columns:1fr; } }
     @media (max-width: 1180px) {
       .hero, .grid-2, .grid-3, .grid-4, .kpi-grid, .grid-platforms, .grid-home, .two-col, .chart-wrap, .platform-analysis-grid, .overview-content-grid { grid-template-columns: 1fr; }
-      .platform-hero-main .hero-platform-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .platform-hero-main .hero-platform-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
       .section-head { align-items: start; flex-direction: column; }
       .section-head p { text-align: left; }
       .topbar { align-items: flex-start; flex-direction: column; }
@@ -2440,9 +2443,15 @@
       document.querySelectorAll('.menu-item').forEach(item => {
         item.classList.toggle('active', item.dataset.platformSel === p.id);
       });
-      document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
+      document.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.classList.add('hidden');
+        panel.hidden = true;
+      });
       const activePanel = el('tab-' + state.tab);
-      if (activePanel) activePanel.classList.remove('hidden');
+      if (activePanel) {
+        activePanel.classList.remove('hidden');
+        activePanel.hidden = false;
+      }
       document.querySelectorAll('.tab').forEach(tab => {
         tab.classList.toggle('active', tab.dataset.tab === state.tab);
       });
