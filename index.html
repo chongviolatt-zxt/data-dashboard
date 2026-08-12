@@ -2442,30 +2442,48 @@
       const dates = stats.datedContents.map(row => normalizePublishDate(row[1])).filter(Boolean).sort();
       const dateCoverage = dates.length ? `${dates[0]} 至 ${dates[dates.length - 1]}` : '';
       const latestFile = stats.latestImport?.[1] || '';
-      const sourceLabel = latestFile ? `最近导入：${latestFile}` : '尚未导入官方后台文件';
-      const notes = [
-        {
-          title: '平台定位',
-          text: `${platform.name || '当前平台'}主要关注${platform.category || platform.description || '内容表现'}；这里只展示该平台自己的上传数据。`
-        },
-        {
-          title: '识别口径',
-          text: metricLabels.length ? `已配置识别 ${metricLabels.join('、')} 等字段；缺失指标会保持为空，不跨平台补值。` : '当前尚未配置可识别的数值指标，请在平台配置中补充字段关键词。'
-        },
-        {
-          title: '数据状态',
-          text: stats.contents.length ? `${sourceLabel}；当前有 ${stats.contents.length} 条去重内容${dateCoverage ? `，日期覆盖 ${dateCoverage}` : '，但尚未识别到有效日期'}。` : `${sourceLabel}；上传后才会生成指标、趋势、爆款判断和复盘。`
-        }
-      ];
-      const uploadedNotes = Array.isArray(platform.notes) ? platform.notes.filter(Boolean).slice(0, 2) : [];
-      if (uploadedNotes.length) {
-        notes.push({ title: '本次分析摘要', text: uploadedNotes.join(' ') });
-      } else {
-        notes.push({
-          title: '下一步',
-          text: stats.contents.length ? (stats.snapshots.length ? '继续按周期上传同口径文件，用历史快照观察内容增长和衰减。' : '下一次上传同一内容的新指标后，系统会开始生成历史增长快照。') : '先上传该平台官方后台导出的 CSV 或 Excel；系统会先预检字段、日期和重复记录。'
-        });
+      const sourceLabel = latestFile ? `依据最近导入文件“${latestFile}”` : '当前还没有导入文件';
+      const averageViews = stats.contents.length ? stats.totalViews / stats.contents.length : 0;
+      const topContent = stats.rankedContents[0];
+      const hotRate = stats.contents.length ? (stats.hotCount / stats.contents.length * 100).toFixed(1) : '0.0';
+      const isTemporaryPublicSource = platform.id === 'csdn' && /公开页抓取/.test(latestFile);
+      const notes = [];
+
+      if (!stats.contents.length) {
+        notes.push(
+          { title: '当前表现', text: `${platform.name || '当前平台'}暂无可分析内容；${sourceLabel}，因此暂不生成浏览量、爆款或趋势结论。` },
+          { title: '关键变化', text: '当前缺少历史数据和可比较周期，暂不生成趋势结论。' },
+          { title: '内容判断', text: '暂无内容样本，暂时不能判断哪类主题或内容表现更好。' },
+          { title: '下一步动作', text: '上传该平台官方后台导出的 CSV 或 Excel，确认字段预检通过后再入库分析。' }
+        );
+        return notes;
       }
+
+      notes.push({
+        title: '当前表现',
+        text: `${sourceLabel}，当前有 ${stats.contents.length} 条去重内容；${stats.validViewCount ? `其中 ${stats.validViewCount} 条识别到浏览字段，合计 ${formatMetricNumber(stats.totalViews)}，平均每条 ${formatMetricNumber(averageViews)}。` : '当前没有识别到浏览 / 播放 / 阅读字段，暂不评价流量表现。'}${dateCoverage ? ` 日期覆盖 ${dateCoverage}。` : ' 日期字段暂未形成有效覆盖。'}${isTemporaryPublicSource ? '该文件含“公开页抓取”标记，仅作临时分析，不作为 CSDN 官方后台正式样本。' : ''}`
+      });
+
+      if (stats.growthRows.length) {
+        const rising = stats.growthRows.filter(row => row.viewsGrowth > 0).length;
+        const falling = stats.growthRows.filter(row => row.viewsGrowth < 0).length;
+        notes.push({ title: '关键变化', text: `已有 ${stats.growthRows.length} 条内容出现至少两次指标观测，其中 ${rising} 条浏览量上升、${falling} 条下降；可优先复盘变化最大的内容。` });
+      } else {
+        notes.push({ title: '关键变化', text: stats.snapshots.length < 2 ? '当前缺少可比较的周期数据，暂不生成趋势结论；再次上传同一内容的新指标后再判断增长或衰减。' : '已有历史快照，但暂未形成同一内容的多次有效观测，暂不生成趋势结论。' });
+      }
+
+      notes.push({
+        title: '内容判断',
+        text: topContent ? `当前浏览最高的是“${topContent.row[0] || '未命名内容'}”，约 ${formatMetricNumber(topContent.views)}；${stats.hotCount ? `${stats.hotCount} 条达到爆款阈值，占内容样本 ${hotRate}%，建议先拆解爆款的选题、标题和发布时间。` : '暂未识别出达到爆款阈值的内容，先从浏览最高的内容提炼共同特征。'}` : (metricLabels.length ? `已识别${metricLabels.join('、')}字段，但没有可比较的浏览数值，暂不判断内容优劣。` : '当前尚未配置可识别的数值指标，暂不判断内容优劣。')
+      });
+
+      const actions = [];
+      if (!stats.validViewCount) actions.push('补充并核对浏览 / 播放 / 阅读字段关键词');
+      if (!stats.datedContents.length) actions.push('补充有效发布日期');
+      if (!stats.growthRows.length) actions.push('下一周期上传同一内容的新指标');
+      if (stats.hotCount) actions.push(`优先复盘 ${stats.hotCount} 条爆款内容`);
+      if (!actions.length) actions.push('继续按固定周期上传同口径官方后台文件');
+      notes.push({ title: '下一步动作', text: `${actions.join('；')}。` });
       return notes;
     }
 
