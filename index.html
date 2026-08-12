@@ -524,6 +524,97 @@
       color: var(--muted);
       font-size: 11.5px;
     }
+    .data-quality {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .data-quality-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line-soft);
+      background: #fcfcfb;
+    }
+    .data-quality-title { display: block; font-size: 13px; color: var(--text); }
+    .data-quality-copy { margin: 4px 0 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .data-quality-state {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: rgba(47,111,94,.09);
+      color: var(--primary);
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+    .data-quality-state.warn { background: rgba(201,123,63,.11); color: #9a641e; }
+    .data-quality-state.block { background: rgba(176,99,103,.10); color: var(--rose); }
+    .data-quality-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+    .data-quality-item {
+      min-width: 0;
+      padding: 12px 14px;
+      border-right: 1px solid var(--line-soft);
+    }
+    .data-quality-item:last-child { border-right: none; }
+    .data-quality-item span { display: block; color: var(--muted-2); font-size: 11px; }
+    .data-quality-item strong { display: block; margin-top: 5px; color: var(--text); font-size: 14px; }
+    .data-quality-item p { margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+    .operation-toast {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      z-index: 30;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      max-width: min(420px, calc(100vw - 32px));
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 12px 30px rgba(37, 48, 43, .14);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.5;
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    .operation-toast.show { opacity: 1; transform: translateY(0); }
+    .operation-toast.success { border-color: rgba(47,111,94,.35); }
+    .operation-toast.warn { border-color: rgba(201,123,63,.42); }
+    .operation-toast.error { border-color: rgba(176,99,103,.45); }
+    .operation-toast-mark { flex: 0 0 auto; font-weight: 800; color: var(--primary); }
+    .operation-toast.warn .operation-toast-mark { color: #9a641e; }
+    .operation-toast.error .operation-toast-mark { color: var(--rose); }
+    .operation-toast-close { margin: -4px -5px 0 auto; padding: 2px 5px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+    .is-busy { opacity: .65; pointer-events: none; }
+    @media (max-width: 520px) {
+      .operation-toast { right: 16px; bottom: 16px; left: 16px; max-width: none; }
+    }
+    @media (max-width: 900px) {
+      .data-quality-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .data-quality-item { border-bottom: 1px solid var(--line-soft); }
+      .data-quality-item:nth-child(2n) { border-right: none; }
+      .data-quality-item:last-child { border-bottom: none; }
+    }
+    @media (max-width: 520px) {
+      .data-quality-head { align-items: stretch; flex-direction: column; }
+      .data-quality-state { align-self: flex-start; }
+      .data-quality-grid { grid-template-columns: 1fr; }
+      .data-quality-item { border-right: none; }
+    }
     @media (max-width: 760px) {
       .content-filter-bar { grid-template-columns: 1fr 1fr; }
       .content-filter-bar .content-search { grid-column: 1 / -1; }
@@ -1198,6 +1289,16 @@
               <div class="kpi"><div class="label">最近导入</div><div class="value" id="overviewLatestImport">暂无</div><div class="hint">当前平台最新批次</div></div>
             </div>
             <p class="chart-caption" id="overviewBasis" style="margin:12px 0 0;">暂无当前平台数据。</p>
+            <div class="data-quality" id="dataQualityPanel">
+              <div class="data-quality-head">
+                <div>
+                  <strong class="data-quality-title">数据质量</strong>
+                  <p class="data-quality-copy" id="dataQualitySummary">等待真实数据后评估字段覆盖和分析可用性。</p>
+                </div>
+                <span class="data-quality-state block" id="dataQualityState">等待数据</span>
+              </div>
+              <div class="data-quality-grid" id="dataQualityGrid"></div>
+            </div>
           </div>
           <div class="grid-2 overview-content-grid">
             <div class="shell">
@@ -1384,7 +1485,7 @@
       </div>
       <div class="modal-foot">
         <button class="btn" type="button" onclick="closeModal('uploadModal')">取消</button>
-        <button class="btn primary" type="button" onclick="handleUpload()">确认上传</button>
+        <button class="btn primary" id="uploadConfirmBtn" type="button" onclick="handleUpload()">确认上传</button>
       </div>
     </div>
   </div>
@@ -1547,6 +1648,12 @@
       }, 600);
     });
   </script>
+
+  <div class="operation-toast" id="operationToast" role="status" aria-live="polite">
+    <span class="operation-toast-mark" id="operationToastMark">✓</span>
+    <span id="operationToastText"></span>
+    <button type="button" class="operation-toast-close" aria-label="关闭提示" onclick="hideOperationToast()">×</button>
+  </div>
 
   <script>
     const SUPABASE_URL = 'https://yzxiqzwnxanpxeeugzkm.supabase.co';
@@ -1741,6 +1848,39 @@
     }
 
     const el = (id) => document.getElementById(id);
+    let operationToastTimer = null;
+    function hideOperationToast() {
+      const toast = el('operationToast');
+      if (!toast) return;
+      toast.classList.remove('show');
+      if (operationToastTimer) window.clearTimeout(operationToastTimer);
+      operationToastTimer = null;
+    }
+    function showOperationToast(type, message, duration = 4200) {
+      const toast = el('operationToast');
+      if (!toast || !message) return;
+      const normalizedType = ['success', 'warn', 'error'].includes(type) ? type : 'success';
+      el('operationToastMark').textContent = normalizedType === 'error' ? '!' : normalizedType === 'warn' ? 'i' : '✓';
+      el('operationToastText').textContent = message;
+      toast.className = `operation-toast ${normalizedType} show`;
+      if (operationToastTimer) window.clearTimeout(operationToastTimer);
+      operationToastTimer = duration > 0 ? window.setTimeout(hideOperationToast, duration) : null;
+    }
+    function setButtonBusy(id, busy, busyText) {
+      const button = el(id);
+      if (!button) return;
+      if (busy) {
+        button.dataset.idleText = button.textContent;
+        button.textContent = busyText || '处理中…';
+        button.classList.add('is-busy');
+        button.disabled = true;
+      } else {
+        button.textContent = button.dataset.idleText || button.textContent;
+        button.classList.remove('is-busy');
+        button.disabled = false;
+        delete button.dataset.idleText;
+      }
+    }
     const sections = { home: el('homeSection'), platform: el('platformSection') };
 
     function setView(view) {
@@ -1910,9 +2050,11 @@
         renderAll();
         closeModal('addPlatformModal');
         hint.textContent = '平台已创建';
+        showOperationToast('success', supabaseClient ? `${name} 已创建并保存到 Supabase` : `${name} 已创建在当前页面`);
       } catch (err) {
         console.error(err);
         hint.textContent = `保存失败：${err.message}`;
+        showOperationToast('error', `新增平台失败：${err.message}`, 7000);
       }
     }
 
@@ -1955,8 +2097,10 @@
         }
         renderAll();
         closeModal('editPlatformModal');
+        showOperationToast('success', supabaseClient ? `${name} 的平台配置已保存到 Supabase` : `${name} 的平台配置已更新`);
       } catch (err) {
         el('editPlatformHint').textContent = `保存失败：${err.message}`;
+        showOperationToast('error', `平台配置保存失败：${err.message}`, 7000);
       }
     }
     function parseDisplayedMetric(value) {
@@ -2400,11 +2544,60 @@
       const hotCount = contents.filter(row => row[4] === '爆款').length;
       const totalViews = contents.reduce((sum, row) => sum + parseDisplayedMetric(row[2]), 0);
       const validViewCount = contents.filter(row => String(row[2] ?? '').trim() !== '').length;
+      const validEngagementCount = contents.filter(row => String(row[3] ?? '').trim() !== '').length;
+      const titledContentCount = contents.filter(row => String(row[0] ?? '').trim() !== '').length;
       const rankedContents = contents
         .filter(row => String(row[2] ?? '').trim() !== '')
         .map(row => ({ row, views: parseDisplayedMetric(row[2]) }))
         .sort((a, b) => b.views - a.views);
-      return { contents, imports, audits, snapshots, datedContents, latestImport, latestAudit, growthRows, hotCount, totalViews, validViewCount, rankedContents };
+      return { contents, imports, audits, snapshots, datedContents, latestImport, latestAudit, growthRows, hotCount, totalViews, validViewCount, validEngagementCount, titledContentCount, rankedContents };
+    }
+
+    function formatCoverage(count, total) {
+      return total ? `${Math.round(count / total * 100)}%` : '0%';
+    }
+
+    function renderDataQuality(platform, stats) {
+      const total = stats.contents.length;
+      const dateRate = total ? stats.datedContents.length / total : 0;
+      const viewRate = total ? stats.validViewCount / total : 0;
+      const engagementRate = total ? stats.validEngagementCount / total : 0;
+      const titleRate = total ? stats.titledContentCount / total : 0;
+      const temporaryPublicSource = platform.id === 'csdn' && /公开页抓取/.test(stats.latestImport?.[1] || '');
+      let stateText = '可正常分析';
+      let stateClass = '';
+      let summary = '标题、日期和浏览字段覆盖较完整，可以继续查看内容表现。';
+      if (!total) {
+        stateText = '等待数据';
+        stateClass = 'block';
+        summary = '当前平台没有真实内容记录，上传官方后台文件后才会评估数据质量。';
+      } else if (!stats.validViewCount || !stats.datedContents.length || titleRate < 1) {
+        stateText = '建议检查字段';
+        stateClass = 'block';
+        summary = !stats.validViewCount ? '没有识别到浏览 / 播放 / 阅读字段，流量 KPI 和内容排行暂不可用。' : !stats.datedContents.length ? '没有识别到有效发布日期，日期趋势和周期复盘暂不可用。' : '存在标题为空的内容，建议检查来源文件后再继续分析。';
+      } else if (dateRate < .8 || viewRate < .8 || !stats.validEngagementCount || !stats.growthRows.length || temporaryPublicSource) {
+        stateText = '部分指标缺失';
+        stateClass = 'warn';
+        const issues = [];
+        if (dateRate < .8) issues.push('有效日期覆盖不足 80%');
+        if (viewRate < .8) issues.push('浏览字段覆盖不足 80%');
+        if (!stats.validEngagementCount) issues.push('未识别到互动字段');
+        if (!stats.growthRows.length) issues.push('尚无同一内容的多次观测');
+        if (temporaryPublicSource) issues.push('当前 CSDN 来源标记为公开页抓取');
+        summary = `${issues.join('；')}。已有数据仍可查看，但相关结论会受限。`;
+      }
+      const stateEl = el('dataQualityState');
+      stateEl.textContent = stateText;
+      stateEl.className = `data-quality-state ${stateClass}`.trim();
+      el('dataQualitySummary').textContent = summary;
+      const items = [
+        { label: '内容记录', value: `${total} 条`, hint: total ? '当前平台去重内容' : '等待上传' },
+        { label: '标题完整度', value: formatCoverage(stats.titledContentCount, total), hint: `${stats.titledContentCount} / ${total || 0} 条有标题` },
+        { label: '日期覆盖率', value: formatCoverage(stats.datedContents.length, total), hint: `${stats.datedContents.length} / ${total || 0} 条可做周期分析` },
+        { label: '浏览字段覆盖率', value: formatCoverage(stats.validViewCount, total), hint: `${stats.validViewCount} / ${total || 0} 条可做流量分析` },
+        { label: '互动与历史', value: stats.growthRows.length ? `${stats.growthRows.length} 条可比较` : stats.snapshots.length ? `${stats.snapshots.length} 条快照` : '暂无快照', hint: stats.validEngagementCount ? `${stats.validEngagementCount} 条有互动摘要` : '未识别互动字段' }
+      ];
+      el('dataQualityGrid').innerHTML = items.map(item => `<div class="data-quality-item"><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value)}</strong><p>${escapeHtml(item.hint)}</p></div>`).join('');
     }
 
     function renderContentRanking(platform) {
@@ -2436,6 +2629,7 @@
       el('overviewSnapshotCount').textContent = String(stats.snapshots.length);
       el('overviewLatestImport').textContent = latestImportText;
       el('overviewBasis').textContent = stats.contents.length ? `当前平台共 ${stats.contents.length} 条去重内容，其中 ${stats.datedContents.length} 条有有效发布日期；${stats.validViewCount ? `已识别 ${stats.validViewCount} 条浏览字段，合计 ${formatMetricNumber(stats.totalViews)}。` : '当前文件未识别到浏览字段。'} 最近导入文件：${stats.latestImport ? stats.latestImport[1] : '暂无记录'}。` : '暂无当前平台数据，上传官方后台文件后才会生成概览。';
+      renderDataQuality(platform, stats);
       if (!stats.contents.length) {
         el('contentOpsSummary').textContent = '暂无内容数据';
         el('contentOpsHotSummary').textContent = '暂无爆款数据';
@@ -2796,8 +2990,11 @@
         state.cloudStatus = 'unavailable';
         state.statusMessage = '当前浏览器未加载 Supabase 客户端';
         renderRuntimeStatus();
+        showOperationToast('error', state.statusMessage);
         return;
       }
+      setButtonBusy('syncCloudBtn', true, '同步中…');
+      showOperationToast('warn', '正在从 Supabase 加载真实数据…', 0);
       try {
         state.cloudStatus = 'loading';
         state.statusMessage = '';
@@ -2898,10 +3095,14 @@
         state.cloudStatus = 'connected';
         state.statusMessage = '';
         renderAll();
+        showOperationToast('success', `云端加载完成：${platforms.length} 个平台，${platforms.reduce((sum, p) => sum + (p.contents?.length || 0), 0)} 条内容`);
       } catch (err) {
         state.cloudStatus = 'error';
         state.statusMessage = `云端读取失败：${err.message}`;
         renderAll();
+        showOperationToast('error', state.statusMessage, 7000);
+      } finally {
+        setButtonBusy('syncCloudBtn', false);
       }
     }
 
@@ -3536,6 +3737,8 @@
         return;
       }
       const platform = platforms.find(p => p.id === platformId) || platforms[0];
+      setButtonBusy('uploadConfirmBtn', true, '上传中…');
+      showOperationToast('warn', '正在解析文件并写入 Supabase…', 0);
       try {
         const summaries = [];
         const skipped = [];
@@ -3631,12 +3834,16 @@
         }
         hint.textContent = `已新增 ${summaries.length} 个文件，跳过 ${skipped.length} 个重复文件；历史数据已保留。`;
         closeModal('uploadModal');
+        showOperationToast('success', `上传完成：新增 ${summaries.length} 个文件，跳过 ${skipped.length} 个重复文件`);
       } catch (err) {
         console.error(err);
         state.cloudStatus = 'error';
         state.statusMessage = `上传或云端写入失败：${err.message}`;
         renderRuntimeStatus();
         hint.textContent = `上传失败：${err.message}`;
+        showOperationToast('error', state.statusMessage, 7000);
+      } finally {
+        setButtonBusy('uploadConfirmBtn', false);
       }
     }
 
@@ -3658,14 +3865,29 @@
     }
 
     async function saveCurrentToCloud() {
-      if (!supabaseClient) throw new Error('Supabase 客户端未初始化');
-      const platformRows = platforms.map(toDbPlatformRow);
-      const { error } = await supabaseClient.from(TABLES.platforms).upsert(platformRows, { onConflict: 'code' });
-      if (error) throw error;
-      state.dataSource = 'supabase';
-      state.cloudStatus = 'connected';
-      state.statusMessage = '平台配置已保存；历史内容、导入批次和审计日志均已保留';
-      renderAll();
+      if (!supabaseClient) {
+        showOperationToast('error', 'Supabase 客户端未初始化');
+        return;
+      }
+      setButtonBusy('saveCloudBtn', true, '保存中…');
+      showOperationToast('warn', '正在保存平台配置…', 0);
+      try {
+        const platformRows = platforms.map(toDbPlatformRow);
+        const { error } = await supabaseClient.from(TABLES.platforms).upsert(platformRows, { onConflict: 'code' });
+        if (error) throw error;
+        state.dataSource = 'supabase';
+        state.cloudStatus = 'connected';
+        state.statusMessage = '平台配置已保存；历史内容、导入批次和审计日志均已保留';
+        renderAll();
+        showOperationToast('success', `已保存 ${platformRows.length} 个平台配置，历史数据保持不变`);
+      } catch (err) {
+        state.cloudStatus = 'error';
+        state.statusMessage = `平台配置保存失败：${err.message}`;
+        renderRuntimeStatus();
+        showOperationToast('error', state.statusMessage, 7000);
+      } finally {
+        setButtonBusy('saveCloudBtn', false);
+      }
     }
 
     document.addEventListener('click', (e) => {
@@ -3684,10 +3906,7 @@
       if (e.target.id === 'goHomeBtn') {
         // 主页按钮已有 onclick="setView('home')"，这里不再重复执行。
       }
-      if (e.target.id === 'syncCloudBtn') syncFromCloud();
       if (e.target.id === 'saveCloudBtn') saveCurrentToCloud();
-      if (e.target.id === 'openUploadBtn') el('uploadModal').classList.add('show');
-      if (e.target.id === 'openAddPlatformBtn') el('addPlatformModal').classList.add('show');
       if (e.target.dataset.close) el(e.target.dataset.close).classList.remove('show');
       if (e.target.classList.contains('modal-mask')) e.target.classList.remove('show');
     });
