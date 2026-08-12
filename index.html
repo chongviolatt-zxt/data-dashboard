@@ -902,6 +902,8 @@
     .modal-mask.show { display: flex; }
     .modal {
       width: min(760px, 100%);
+      max-height: calc(100vh - 40px);
+      overflow: auto;
       border-radius: 24px;
       background: #fffdf9;
       border: 1px solid var(--line);
@@ -950,7 +952,8 @@
       resize: vertical;
     }
     .form-field textarea { min-height: 84px; }
-    .hidden { display: none !important; }
+    .field-profile-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; margin-top:8px; }
+    @media (max-width:680px) { .field-profile-grid { grid-template-columns:1fr; } }
     @media (max-width: 1180px) {
       .hero, .grid-2, .grid-3, .grid-4, .kpi-grid, .grid-platforms, .grid-home, .two-col, .chart-wrap, .platform-analysis-grid, .overview-content-grid { grid-template-columns: 1fr; }
       .platform-hero-main .hero-platform-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1343,6 +1346,28 @@
             <label>数据来源</label>
             <input id="newPlatformSource" placeholder="例如：平台官方账号后台" />
           </div>
+          <div class="form-field" style="grid-column:1/-1;">
+            <label>字段口径（每行一个关键词，可填多个）</label>
+            <div class="field-profile-grid">
+              <input id="newPlatformTitleKeywords" placeholder="标题：文章标题, 标题, title" />
+              <input id="newPlatformDateKeywords" placeholder="日期：发布日期, 发布时间, date" />
+              <input id="newPlatformViewsKeywords" placeholder="核心指标：阅读数, 浏览量, 曝光量, views" />
+              <input id="newPlatformLikesKeywords" placeholder="点赞：点赞数, 点赞, likes" />
+              <input id="newPlatformFavoritesKeywords" placeholder="收藏：收藏数, 收藏, favorites" />
+              <input id="newPlatformCommentsKeywords" placeholder="评论：评论数, 评论, comments" />
+              <input id="newPlatformSharesKeywords" placeholder="分享：分享数, 转发, shares" />
+              <input id="newPlatformWatchKeywords" placeholder="完成率（可选）：完播率, 完读率, completion" />
+            </div>
+            <p class="chart-caption" style="margin:8px 0 0;">关键词之间用逗号、中文逗号或换行分隔；空字段会保持为空，不会套用其他平台口径。</p>
+          </div>
+          <div class="form-field">
+            <label>爆款浏览阈值</label>
+            <input id="newPlatformHotViews" type="number" min="0" placeholder="例如：1000" />
+          </div>
+          <div class="form-field">
+            <label>爆款互动阈值</label>
+            <input id="newPlatformHotEngagement" type="number" min="0" placeholder="例如：50" />
+          </div>
         </div>
         <div class="empty" id="addPlatformHint" style="margin-top:12px;">平台名称和 code 为必填项。code 只能使用小写字母、数字和下划线，创建后将自动加入首页和平台切换列表。</div>
       </div>
@@ -1544,6 +1569,7 @@
         description: p.category || '',
         color: p.color || 'primary',
         icon: p.icon || '',
+        field_profile: p.fieldProfile || null,
         owner: state.operator,
         updated_at: new Date().toISOString(),
         updated_by: state.operator
@@ -1601,6 +1627,7 @@
         description: row.description || row.category || '',
         color: row.color || 'primary',
         icon: row.icon || '',
+        fieldProfile: row.field_profile || null,
         kpis: row.kpis || [],
         chips: row.chips || [],
         notes: row.notes || [],
@@ -1733,9 +1760,10 @@
         name: config.name,
         short: config.short || config.name,
         category: config.category || '未填写定位',
-        color: config.color || 'primary',
-        icon: config.icon || '',
+        color: config.color || '#2f6f5e',
+        icon: config.icon || (config.short || config.name || '平').slice(0, 1),
         description: config.description || config.category || '',
+        fieldProfile: config.fieldProfile || null,
         owner: config.owner || '',
         goal: config.goal || '',
         source: config.source || '',
@@ -1755,11 +1783,22 @@
       const owner = (el('newPlatformOwner').value || '').trim();
       const goal = (el('newPlatformGoal').value || '').trim();
       const source = (el('newPlatformSource').value || '').trim();
-      const color = el('newPlatformColor').value || 'primary';
+      const titleKeywords = el('newPlatformTitleKeywords').value;
+      const dateKeywords = el('newPlatformDateKeywords').value;
+      const viewsKeywords = el('newPlatformViewsKeywords').value;
+      const likesKeywords = el('newPlatformLikesKeywords').value;
+      const favoritesKeywords = el('newPlatformFavoritesKeywords').value;
+      const commentsKeywords = el('newPlatformCommentsKeywords').value;
+      const sharesKeywords = el('newPlatformSharesKeywords').value;
+      const watchKeywords = el('newPlatformWatchKeywords').value;
+      const hotViews = el('newPlatformHotViews').value;
+      const hotEngagement = el('newPlatformHotEngagement').value;
+      const color = el('newPlatformColor').value || '#2f6f5e';
       if (!name || !id) { hint.textContent = '平台名称和平台 code 都要填写。'; return; }
       if (!/^[a-z0-9_]+$/.test(id)) { hint.textContent = '平台 code 只能使用小写字母、数字和下划线。'; return; }
       if (platforms.some(platform => platform.id === id)) { hint.textContent = '这个平台 code 已经存在，请换一个。'; return; }
-      const platform = createEmptyPlatform({ id, name, short, category, owner, goal, source, color });
+      const fieldProfile = buildCustomFieldProfile({ titleKeywords, dateKeywords, viewsKeywords, likesKeywords, favoritesKeywords, commentsKeywords, sharesKeywords, watchKeywords, hotViews, hotEngagement }, name);
+      const platform = createEmptyPlatform({ id, name, short, category, owner, goal, source, color, fieldProfile });
       try {
         if (supabaseClient) {
           const { error } = await supabaseClient.from(TABLES.platforms).upsert({ ...toDbPlatformRow(platform), owner: owner || null, description: [goal, source].filter(Boolean).join(' · ') || null }, { onConflict: 'code' });
@@ -1925,11 +1964,37 @@
         { id: 'likesRate', label: '点赞率', unit: '%', color: '#2f6f5e', description: '点赞数 ÷ 播放量' },
         { id: 'favoritesRate', label: '收藏率', unit: '%', color: '#c97b3f', description: '收藏数 ÷ 播放量' },
         { id: 'completionRate', label: '完播率', unit: '%', color: '#b06367', description: '按抖音后台完播率字段统计' }
+      ],
+      bilibili: [
+        { id: 'views', label: '播放量', unit: '次', color: '#7c5ce5', description: '按 Bilibili 后台播放量字段统计' },
+        { id: 'likesRate', label: '点赞率', unit: '%', color: '#4c8df6', description: '点赞数 ÷ 播放量' },
+        { id: 'favoritesRate', label: '收藏率', unit: '%', color: '#c97b3f', description: '收藏数 ÷ 播放量' },
+        { id: 'completionRate', label: '完播率', unit: '%', color: '#b06367', description: '有完播率字段时显示；没有则不显示真实曲线' }
+      ],
+      linkedin: [
+        { id: 'views', label: '展示量', unit: '次', color: '#1f9d8a', description: '按 LinkedIn 后台展示次数 / 曝光量字段统计' },
+        { id: 'likesRate', label: '点赞率', unit: '%', color: '#2f6f5e', description: '点赞数 ÷ 展示量' },
+        { id: 'favoritesRate', label: '收藏率', unit: '%', color: '#c97b3f', description: '收藏数 ÷ 展示量' }
+      ],
+      csdn: [
+        { id: 'views', label: '阅读量', unit: '次', color: '#e09f3e', description: '按 CSDN 后台阅读数 / 浏览量字段统计' },
+        { id: 'likesRate', label: '点赞率', unit: '%', color: '#2f6f5e', description: '点赞数 ÷ 阅读量' },
+        { id: 'favoritesRate', label: '收藏率', unit: '%', color: '#b06367', description: '收藏数 ÷ 阅读量' }
       ]
     };
 
+    function buildDefaultTrendMetrics(platform) {
+      const platformName = platform && platform.name ? platform.name : '当前平台';
+      return [
+        { id: 'views', label: '浏览量', unit: '次', color: '#2f6f5e', description: `按${platformName}上传文件中实际识别到的浏览 / 阅读 / 曝光 / 播放字段统计` },
+        { id: 'likesRate', label: '点赞率', unit: '%', color: '#c97b3f', description: '点赞数 ÷ 已识别的浏览类指标' },
+        { id: 'favoritesRate', label: '收藏率', unit: '%', color: '#b06367', description: '收藏数 ÷ 已识别的浏览类指标' },
+        { id: 'completionRate', label: '完成率', unit: '%', color: '#4c8df6', description: '仅在上传文件存在完播率、完读率或完成率字段时显示' }
+      ];
+    }
+
     function getTrendMetrics(platform) {
-      const configured = TREND_METRICS[platform.id] || TREND_METRICS.douyin;
+      const configured = TREND_METRICS[platform.id] || buildDefaultTrendMetrics(platform);
       const uploaded = platform.trendMetrics || {};
       return configured.filter(metric => {
         if (metric.id === 'completionRate') return Array.isArray(uploaded.completionRate) && uploaded.completionRate.some(value => value !== null && value !== undefined);
@@ -2488,7 +2553,7 @@
         const mergedPlatforms = platforms.map(local => {
           const platform = cloudById.get(local.id);
           if (!platform) return local;
-          const profileLabel = getFieldProfile(platform.id).label;
+          const profileLabel = normalizeFieldProfile(platform.fieldProfile, platform.name)?.label || getFieldProfile(platform.id).label;
           const platformImports = (bundle.imports || []).filter(row => row.platform_code === platform.id);
           const platformSnapshots = (bundle.snapshots || []).filter(row => row.platform_code === platform.id);
           const cloudContents = (bundle.contents || []).filter(row => row.platform_code === platform.id);
@@ -2543,6 +2608,31 @@
               profileLabel
             ])
           };
+        });
+        const localIds = new Set(mergedPlatforms.map(platform => platform.id));
+        (bundle.platforms || []).filter(platform => !localIds.has(platform.id)).forEach(platform => {
+          const platformImports = (bundle.imports || []).filter(row => row.platform_code === platform.id);
+          const platformSnapshots = (bundle.snapshots || []).filter(row => row.platform_code === platform.id);
+          const cloudContents = (bundle.contents || []).filter(row => row.platform_code === platform.id);
+          const profileLabel = normalizeFieldProfile(platform.fieldProfile, platform.name)?.label || platform.name || '自定义平台';
+          mergedPlatforms.push({
+            ...platform,
+            snapshots: platformSnapshots,
+            trendMetrics: {
+              views: cloudContents.map(row => Number.isFinite(Number(row.views)) ? Number(row.views) : null),
+              likesRate: cloudContents.map(row => Number(row.views) > 0 && row.likes !== null && row.likes !== undefined ? Number(row.likes) / Number(row.views) * 100 : null),
+              favoritesRate: cloudContents.map(row => Number(row.views) > 0 && row.favorites !== null && row.favorites !== undefined ? Number(row.favorites) / Number(row.views) * 100 : null),
+              completionRate: cloudContents.map(row => row.watch_time === null || row.watch_time === undefined ? null : (Number(row.watch_time) <= 1 ? Number(row.watch_time) * 100 : Number(row.watch_time)))
+            },
+            trendDates: cloudContents.map(row => row.publish_date || ''),
+            contents: cloudContents.map(row => [
+              row.title || '', row.publish_date || '', row.views === null || row.views === undefined ? '' : String(row.views),
+              row.engagement_text || '', row.status || (row.is_hot ? '爆款' : '导入')
+            ]),
+            importHashes: platformImports.map(row => row.file_sha).filter(Boolean),
+            imports: platformImports.map(row => [row.imported_at || '', row.source_file || '', row.updated_by || '未知', row.note || '', row.result || '成功', profileLabel, `${row.row_count ?? '-'} 条 / 爆款 ${row.hot_count ?? 0}`]),
+            audits: (bundle.audits || []).filter(row => row.platform_code === platform.id).map(row => [row.action_at || '', row.action_type || '', row.action_target || '', row.updated_by || '未知', row.note || '', profileLabel])
+          });
         });
         if (mergedPlatforms.length) {
           const matched = mergedPlatforms.find(p => p.id === state.platform) || mergedPlatforms[0];
@@ -2664,8 +2754,69 @@
       hotThreshold: { views: 1000, engagement: 100 }
     };
 
+    function parseKeywordInput(value) {
+      return String(value || '').split(/[，,\n]/).map(item => item.trim()).filter(Boolean);
+    }
+
+    function buildCustomFieldProfile(config, name) {
+      const keywords = {
+        title: parseKeywordInput(config.titleKeywords),
+        date: parseKeywordInput(config.dateKeywords),
+        views: parseKeywordInput(config.viewsKeywords),
+        likes: parseKeywordInput(config.likesKeywords),
+        favorites: parseKeywordInput(config.favoritesKeywords),
+        comments: parseKeywordInput(config.commentsKeywords),
+        shares: parseKeywordInput(config.sharesKeywords),
+        status: [],
+        watchTime: parseKeywordInput(config.watchKeywords)
+      };
+      const parseThreshold = (value, fallback) => {
+        const text = String(value ?? '').trim();
+        if (!text) return fallback;
+        const number = Number(text);
+        return Number.isFinite(number) && number >= 0 ? number : fallback;
+      };
+      return {
+        label: name || '自定义平台',
+        keywords,
+        hotThreshold: {
+          views: parseThreshold(config.hotViews, 1000),
+          engagement: parseThreshold(config.hotEngagement, 100)
+        }
+      };
+    }
+
+    function normalizeFieldProfile(profile, fallbackLabel) {
+      if (!profile || typeof profile !== 'object') return null;
+      const sourceKeywords = profile.keywords && typeof profile.keywords === 'object' ? profile.keywords : {};
+      const keywordKeys = ['title', 'date', 'views', 'likes', 'favorites', 'comments', 'shares', 'status', 'watchTime'];
+      const keywords = Object.fromEntries(keywordKeys.map(key => [
+        key,
+        Array.isArray(sourceKeywords[key])
+          ? sourceKeywords[key].map(value => String(value || '').trim()).filter(Boolean)
+          : []
+      ]));
+      const sourceThreshold = profile.hotThreshold && typeof profile.hotThreshold === 'object' ? profile.hotThreshold : {};
+      const threshold = (value, fallback) => {
+        const number = Number(value);
+        return Number.isFinite(number) && number >= 0 ? number : fallback;
+      };
+      return {
+        label: String(profile.label || fallbackLabel || '自定义平台'),
+        keywords,
+        hotThreshold: {
+          views: threshold(sourceThreshold.views, 1000),
+          engagement: threshold(sourceThreshold.engagement, 100)
+        }
+      };
+    }
+
     function getFieldProfile(platformId) {
-      return PLATFORM_FIELD_PROFILES[platformId] || DEFAULT_PROFILE;
+      const platform = platforms.find(item => item.id === platformId);
+      const customProfile = normalizeFieldProfile(platform && platform.fieldProfile, platform && platform.name);
+      if (customProfile) return customProfile;
+      return normalizeFieldProfile(PLATFORM_FIELD_PROFILES[platformId], platform && platform.name)
+        || normalizeFieldProfile(DEFAULT_PROFILE, '默认');
     }
 
     function detectHeaderRow(rows, profile) {
@@ -2753,13 +2904,15 @@
       const headers = hasHeader ? cleaned[0].map(normalizeText) : [];
       const dataRows = hasHeader ? cleaned.slice(1) : cleaned;
       const kws = profile.keywords;
-      const titleIdx = hasHeader ? matchHeaderIndex(headers, kws.title) : 0;
-      const dateIdx = hasHeader ? matchHeaderIndex(headers, kws.date) : 1;
-      const viewsIdx = hasHeader ? matchHeaderIndex(headers, kws.views) : 2;
-      const likesIdx = hasHeader ? matchHeaderIndex(headers, kws.likes) : 3;
-      const favIdx = hasHeader ? matchHeaderIndex(headers, kws.favorites) : 4;
-      const commentsIdx = hasHeader ? matchHeaderIndex(headers, kws.comments) : 5;
-      const sharesIdx = hasHeader ? matchHeaderIndex(headers, kws.shares) : 6;
+      const platform = platforms.find(item => item.id === platformId);
+      const allowPositionalFallback = !platform || !platform.fieldProfile;
+      const titleIdx = hasHeader ? matchHeaderIndex(headers, kws.title) : (allowPositionalFallback ? 0 : -1);
+      const dateIdx = hasHeader ? matchHeaderIndex(headers, kws.date) : (allowPositionalFallback ? 1 : -1);
+      const viewsIdx = hasHeader ? matchHeaderIndex(headers, kws.views) : (allowPositionalFallback ? 2 : -1);
+      const likesIdx = hasHeader ? matchHeaderIndex(headers, kws.likes) : (allowPositionalFallback ? 3 : -1);
+      const favIdx = hasHeader ? matchHeaderIndex(headers, kws.favorites) : (allowPositionalFallback ? 4 : -1);
+      const commentsIdx = hasHeader ? matchHeaderIndex(headers, kws.comments) : (allowPositionalFallback ? 5 : -1);
+      const sharesIdx = hasHeader ? matchHeaderIndex(headers, kws.shares) : (allowPositionalFallback ? 6 : -1);
       const statusIdx = hasHeader ? matchHeaderIndex(headers, kws.status) : -1;
       const watchIdx = hasHeader ? matchHeaderIndex(headers, kws.watchTime) : -1;
 
