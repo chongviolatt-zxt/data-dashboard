@@ -1427,9 +1427,9 @@
             <h3>内容运营</h3>
             <p class="lead" style="font-size:13px;">从真实内容记录中整理专题、爆款和增长，不把“有数据”误当成“有结论”。</p>
             <div class="chip-row" style="margin-top:12px; margin-bottom:0;">
-              <span class="chip" id="contentOpsSummary">暂无内容数据</span>
-              <span class="chip" id="contentOpsHotSummary">暂无爆款数据</span>
-              <span class="chip" id="contentOpsGrowthSummary">暂无增长数据</span>
+              <span class="chip" id="contentOpsSummary">暂无真实内容记录</span>
+              <span class="chip" id="contentOpsHotSummary">等待可评估指标</span>
+              <span class="chip" id="contentOpsGrowthSummary">等待多次观测</span>
             </div>
           </div>
           <div class="grid-3">
@@ -1818,7 +1818,7 @@
       lastCloudSyncAt: ''
     };
 
-    const ROLE_LABELS = { anonymous: '未登录', viewer: '只读', operator: '运营', admin: '管理员' };
+    const ROLE_LABELS = { anonymous: '未登录', disabled: '账号已停用', viewer: '只读', operator: '运营', admin: '管理员' };
 
     function currentActor() {
       const user = state.authUser;
@@ -1831,7 +1831,7 @@
     }
 
     function hasRole(requiredRole) {
-      const rank = { anonymous: 0, viewer: 1, operator: 2, admin: 3 };
+      const rank = { anonymous: 0, disabled: 0, viewer: 1, operator: 2, admin: 3 };
       return (rank[state.authRole] || 0) >= (rank[requiredRole] || 99);
     }
 
@@ -1870,7 +1870,7 @@
       if (banner) {
         banner.classList.toggle('ready', state.securityMigrationReady);
         banner.textContent = state.securityMigrationReady
-          ? (actor.id ? `安全策略已启用 · 当前身份：${identityText}。写操作同时受前端角色和数据库 RLS 限制。` : '安全策略已启用 · 当前为匿名只读。登录后按角色开放写操作。')
+          ? (actor.id ? `安全策略已启用 · 当前身份：${identityText}。读写操作同时受登录角色和数据库 RLS 限制。` : '安全策略已启用 · 内部数据需要工作邮箱登录后才能读取。')
           : '安全策略待启用 · 当前仅兼容读取旧数据。为避免继续匿名写入，上传、平台配置和删除已暂时锁定。';
       }
       const uploadAllowed = state.securityMigrationReady && hasRole('operator');
@@ -1884,7 +1884,16 @@
 
     async function loadAuthState() {
       if (!supabaseClient?.auth) return;
-      const { data } = await supabaseClient.auth.getSession();
+      const { data, error: sessionError } = await supabaseClient.auth.getSession();
+      if (sessionError) {
+        state.authUser = null;
+        state.authProfile = null;
+        state.authRole = 'anonymous';
+        state.statusMessage = `登录状态读取失败：${sessionError.message}`;
+        renderAuthState();
+        renderRuntimeStatus();
+        return;
+      }
       state.authUser = data?.session?.user || null;
       state.authProfile = null;
       state.authRole = state.authUser ? 'viewer' : 'anonymous';
@@ -1894,11 +1903,12 @@
         const { data: profile, error } = await supabaseClient.from(TABLES.profiles).select('user_id,display_name,role,is_active').eq('user_id', state.authUser.id).maybeSingle();
         if (!error && profile) {
           state.authProfile = profile;
-          state.authRole = profile.is_active === false ? 'viewer' : (profile.role || 'viewer');
+          state.authRole = profile.is_active === false ? 'disabled' : (profile.role || 'viewer');
         }
       }
       renderAll();
       renderAuthState();
+      if (state.authUser && hasRole('viewer')) await syncFromCloud({ silent: true });
     }
 
     async function sendLoginLink() {
@@ -2034,6 +2044,7 @@
     function toDbContentRows(platform) {
       return platform.contents.map((row, index) => ({
         platform_code: platform.id,
+        content_key: contentDedupKey(row, platform.id),
         title: row[0],
         publish_date: row[1],
         views: Number(String(row[2]).replace(/,/g, '')) || 0,
@@ -2296,7 +2307,8 @@
       const platform = createEmptyPlatform({ id, name, short, category, owner, goal, source, color, fieldProfile });
       try {
         if (supabaseClient) {
-          const { error } = await supabaseClient.from(TABLES.platforms).upsert({ ...toDbPlatformRow(platform), owner: owner || null, description: [goal, source].filter(Boolean).join(' · ') || null }, { onConflict: 'code' });
+          const row = { ...toDbPlatformRow(platform), owner: owner || null, description: [goal, source].filter(Boolean).join(' · ') || null };
+          const { error } = await supabaseClient.rpc('save_dashboard_platform_configs', { p_platforms: [row], p_change_note: '新增平台' });
           if (error) throw error;
           state.dataSource = 'supabase';
         } else {
@@ -2348,7 +2360,7 @@
       Object.assign(platform, { name, short: short || name, category, description: category, icon, color });
       try {
         if (supabaseClient) {
-          const { error } = await supabaseClient.from(TABLES.platforms).upsert(toDbPlatformRow(platform), { onConflict: 'code' });
+          const { error } = await supabaseClient.rpc('save_dashboard_platform_configs', { p_platforms: [toDbPlatformRow(platform)], p_change_note: '编辑平台配置' });
           if (error) throw error;
           state.dataSource = 'supabase';
           state.cloudStatus = 'connected';
@@ -2792,6 +2804,55 @@
       return [];
     }
 
+    function extractExplicitTopicLabels(title) {
+      const text = String(title || '').trim();
+      if (!text || /^\d+(?:\.\d+)?$/.test(text)) return [];
+      const labels = [];
+      const add = value => {
+        const label = String(value || '').trim().replace(/^[#＃\s]+|[#＃\s]+$/g, '');
+        if (label.length >= 2 && label.length <= 16 && !/^\d+(?:[-/.]\d+)*$/.test(label)) labels.push(label);
+      };
+      const bracket = text.match(/^[【\[]([^】\]]+)[】\]]/);
+      if (bracket) add(bracket[1]);
+      for (const match of text.matchAll(/[#＃]([^#＃\s]{2,16})[#＃]?/g)) add(match[1]);
+      const prefix = text.match(/^([^：:｜|]{2,12})[：:｜|]/);
+      if (prefix) add(prefix[1]);
+      return Array.from(new Set(labels));
+    }
+
+    function getContentOperationsInsight(platform, stats) {
+      const topicCounts = new Map();
+      stats.contents.forEach(row => {
+        extractExplicitTopicLabels(row[0]).forEach(label => topicCounts.set(label, (topicCounts.get(label) || 0) + 1));
+      });
+      const topics = Array.from(topicCounts.entries())
+        .filter(([, count]) => count >= 2)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-CN'))
+        .slice(0, 6);
+      const hotRows = stats.contents.filter(row => row[4] === '爆款');
+      const positiveGrowthRows = stats.growthRows.filter(row => row.viewsGrowth > 0 || row.engagementGrowth > 0);
+      const evaluableHotCount = new Set([
+        ...stats.contents.filter(row => String(row[2] ?? '').trim() !== ''),
+        ...stats.contents.filter(row => String(row[3] ?? '').trim() !== '')
+      ]).size;
+      const threshold = getFieldProfile(platform.id).hotThreshold || { views: 1000, engagement: 100 };
+      const suggestions = [];
+      if (!stats.contents.length) {
+        suggestions.push({ title: '等待真实内容', text: '上传当前平台官方后台导出文件后，再生成专题、爆款和增长动作。' });
+      } else {
+        if (topics.length) suggestions.push({ title: '按栏目做对比', text: `已识别 ${topics.length} 个重复栏目，可分别比较浏览、互动和发布日期，不把栏目出现次数直接当成表现结论。` });
+        else suggestions.push({ title: '统一栏目标题', text: '真实标题中暂未发现重复的明确栏目标记；后续可统一使用“【栏目名】标题”沉淀可比较样本。' });
+        if (hotRows.length) suggestions.push({ title: '先拆解达标内容', text: `优先复盘 ${hotRows.length} 条达到当前阈值的内容，比较选题、标题结构和发布时间。` });
+        else if (evaluableHotCount) suggestions.push({ title: '从高表现内容找差距', text: `${evaluableHotCount} 条内容已参与爆款判断但未达阈值，可先查看内容排行前列，避免把“未达阈值”写成“没有数据”。` });
+        else suggestions.push({ title: '补齐爆款判断字段', text: '当前缺少可识别的浏览或互动字段，暂时不能判断是否达到爆款阈值。' });
+        if (positiveGrowthRows.length) suggestions.push({ title: '复盘真实增长', text: `${positiveGrowthRows.length} 条内容在多次观测中出现指标增长，优先查看增长最大的内容及来源批次。` });
+        else if (stats.growthRows.length) suggestions.push({ title: '多次观测暂未增长', text: `${stats.growthRows.length} 条内容已有可比较快照，但暂未出现正增长；继续按固定周期更新同一批内容。` });
+        else suggestions.push({ title: '建立增长观测', text: '下一周期再次上传同一内容的最新官方数据，形成至少两次观测后再判断增长。' });
+        if (stats.datedContents.length < stats.contents.length) suggestions.push({ title: '补齐发布日期', text: `${stats.contents.length - stats.datedContents.length} 条内容日期未识别，涉及周期表现时应先补齐日期。` });
+      }
+      return { topics, hotRows, positiveGrowthRows, evaluableHotCount, threshold, suggestions };
+    }
+
     function getPlatformRuntimeStats(platform) {
       const contents = Array.isArray(platform.contents) ? platform.contents : [];
       const imports = Array.isArray(platform.imports) ? platform.imports : [];
@@ -2943,27 +3004,17 @@
       setButtonBusy('deleteImportConfirmBtn', true, '删除中…');
       showOperationToast('warn', `正在删除批次 ${sourceFile}…`, 0);
       try {
-        if (supabaseClient && state.dataSource === 'supabase') {
-          const deletes = [
-            supabaseClient.from(TABLES.contentSnapshots).delete().eq('platform_code', platformId).eq('source_file', sourceFile),
-            supabaseClient.from(TABLES.contents).delete().eq('platform_code', platformId).eq('source_file', sourceFile),
-            supabaseClient.from(TABLES.importJobs).delete().eq('platform_code', platformId).eq('source_file', sourceFile)
-          ];
-          const results = await Promise.all(deletes);
-          const failed = results.find(result => result.error);
-          if (failed) throw failed.error;
-          const { error: auditError } = await supabaseClient.from(TABLES.auditLogs).insert({ platform_code: platformId, action_at: actionAt, action_type: '删除批次', action_target: sourceFile, source_file: sourceFile, result: '成功', updated_by: operator, actor_user_id: currentActor().id, note: `删除 ${impact.contents.length} 条内容、${impact.snapshots.length} 条快照`, created_at: new Date().toISOString() });
-          if (auditError) throw auditError;
-        }
-        platform.contents = (platform.contents || []).filter(row => row[5] !== sourceFile);
-        platform.snapshots = (platform.snapshots || []).filter(row => row.source_file !== sourceFile);
-        platform.imports = (platform.imports || []).filter(row => row[1] !== sourceFile);
-        const removedHashes = new Set(impact.imports.map(row => getImportMeta(row).fileHash).filter(Boolean));
-        platform.importHashes = (platform.importHashes || []).filter(hash => !removedHashes.has(hash));
-        platform.audits = [[actionAt, '删除批次', sourceFile, operator, `删除 ${impact.contents.length} 条内容、${impact.snapshots.length} 条快照`, getFieldProfile(platformId).label], ...(platform.audits || [])].slice(0, 100);
+        if (!supabaseClient || state.dataSource !== 'supabase') throw new Error('请先从云端加载最新数据后再删除批次');
+        const { data, error } = await supabaseClient.rpc('delete_dashboard_batch', {
+          p_platform_code: platformId,
+          p_source_file: sourceFile,
+          p_note: `页面预览影响：${impact.contents.length} 条内容、${impact.snapshots.length} 条快照。`
+        });
+        if (error) throw error;
         closeModal('deleteImportModal');
-        renderAll();
-        showOperationToast('success', `已删除批次：${sourceFile}`);
+        await syncFromCloud({ silent: true });
+        const deleted = data || {};
+        showOperationToast('success', `已原子删除：${deleted.contents || 0} 条内容、${deleted.snapshots || 0} 条快照、${deleted.imports || 0} 个批次`);
       } catch (err) {
         showOperationToast('error', `批次删除失败：${err.message}`, 7000);
       } finally {
@@ -3003,14 +3054,23 @@
       renderDataQuality(platform, stats);
       renderFieldProfileDetails(platform, stats);
       renderPlatformSource(platform, stats);
+      const operationsInsight = getContentOperationsInsight(platform, stats);
       if (!stats.contents.length) {
-        el('contentOpsSummary').textContent = '暂无内容数据';
-        el('contentOpsHotSummary').textContent = '暂无爆款数据';
-        el('contentOpsGrowthSummary').textContent = '暂无增长数据';
+        el('contentOpsSummary').textContent = '暂无真实内容记录';
+        el('contentOpsHotSummary').textContent = '等待可评估指标';
+        el('contentOpsGrowthSummary').textContent = '等待多次观测';
       } else {
         el('contentOpsSummary').textContent = `${stats.contents.length} 条内容 · ${stats.datedContents.length} 条可做日期分析`;
-        el('contentOpsHotSummary').textContent = stats.hotCount ? `${stats.hotCount} 条爆款` : '暂无爆款数据';
-        el('contentOpsGrowthSummary').textContent = stats.growthRows.length ? `${stats.growthRows.length} 条内容有增长记录` : '暂无多次观测增长';
+        el('contentOpsHotSummary').textContent = operationsInsight.hotRows.length
+          ? `${operationsInsight.hotRows.length} 条达到爆款阈值`
+          : operationsInsight.evaluableHotCount
+            ? `${operationsInsight.evaluableHotCount} 条已评估 · 均未达阈值`
+            : '缺少指标 · 暂不能判断爆款';
+        el('contentOpsGrowthSummary').textContent = operationsInsight.positiveGrowthRows.length
+          ? `${operationsInsight.positiveGrowthRows.length} 条出现真实增长`
+          : stats.growthRows.length
+            ? `${stats.growthRows.length} 条已观测 · 暂无正增长`
+            : '尚未形成多次观测';
       }
       el('logsImportCount').textContent = String(stats.imports.length);
       el('logsAuditCount').textContent = String(Array.isArray(platform.audits) ? platform.audits.length : 0);
@@ -3022,7 +3082,14 @@
       const dates = stats.datedContents.map(row => normalizePublishDate(row[1])).sort();
       const coverage = dates.length ? `${dates[0]} 至 ${dates[dates.length - 1]}` : '暂无周期数据';
       el('reviewCoverageChip').textContent = dates.length ? `数据覆盖 ${coverage}` : '暂无周期数据';
-      el('reviewDirectionChip').textContent = stats.growthRows.length ? '已有内容增长信号' : stats.contents.length ? '等待第二次观测' : '等待真实数据';
+      const insight = getContentOperationsInsight(platform, stats);
+      el('reviewDirectionChip').textContent = insight.positiveGrowthRows.length
+        ? '已有真实增长信号'
+        : stats.growthRows.length
+          ? '已有观测 · 暂无正增长'
+          : stats.contents.length
+            ? '等待第二次观测'
+            : '等待真实数据';
     }
 
     function renderPeriodReview(platform) {
@@ -3051,7 +3118,12 @@
       const monthChange = previousMonthRows.length && previousMonthViews > 0 ? `，浏览较前 30 天 ${monthViews >= previousMonthViews ? '增长' : '下降'} ${Math.abs((monthViews - previousMonthViews) / previousMonthViews * 100).toFixed(1)}%` : '';
       el('weekReview').textContent = weekRows.length ? `按 ${weekStart.toISOString().slice(0, 10)} 至 ${latestDate} 统计，共 ${weekRows.length} 条有日期内容，合计浏览 ${formatMetricNumber(weekViews)}；最高浏览内容为“${topWeek.row[0] || '未命名内容'}”，约 ${formatMetricNumber(topWeek.views)}。` : `最近 7 天（截至 ${latestDate}）没有有效内容记录。`;
       el('monthReview').textContent = monthRows.length ? `按近 30 天（${monthStart.toISOString().slice(0, 10)} 至 ${latestDate}）统计，共 ${monthRows.length} 条有日期内容，合计浏览 ${formatMetricNumber(monthViews)}${monthChange}；最高浏览内容为“${topMonth.row[0] || '未命名内容'}”，约 ${formatMetricNumber(topMonth.views)}。` : `近 30 天（截至 ${latestDate}）没有有效内容记录。`;
-      el('conversionReview').textContent = stats.growthRows.length ? `已有 ${stats.growthRows.length} 条内容出现多次指标观测，可优先把增长持续的内容接入咨询、私信或落地页等业务动作。当前页面只提示方向，不虚构转化数据。` : '当前还没有同一内容的多次指标观测，暂时不能判断内容增长与业务结果的关系。';
+      const growthInsight = getContentOperationsInsight(platform, stats);
+      el('conversionReview').textContent = growthInsight.positiveGrowthRows.length
+        ? `已有 ${growthInsight.positiveGrowthRows.length} 条内容在多次指标观测中出现真实增长，可优先查看这些内容是否同时带来咨询、私信或落地页访问。当前页面只提示方向，不虚构转化数据。`
+        : stats.growthRows.length
+          ? `已有 ${stats.growthRows.length} 条内容形成多次有效观测，但暂未出现正增长，因此不生成增长与转化关联结论。`
+          : '当前还没有同一内容的多次指标观测，暂时不能判断内容增长与业务结果的关系。';
     }
 
     function buildPlatformContextNotes(platform) {
@@ -3072,7 +3144,8 @@
       const sourceLabel = latestFile ? `依据最近导入文件“${latestFile}”` : '当前还没有导入文件';
       const averageViews = stats.contents.length ? stats.totalViews / stats.contents.length : 0;
       const topContent = stats.rankedContents[0];
-      const hotRate = stats.contents.length ? (stats.hotCount / stats.contents.length * 100).toFixed(1) : '0.0';
+      const operationsInsight = getContentOperationsInsight(platform, stats);
+      const hotRate = stats.contents.length ? (operationsInsight.hotRows.length / stats.contents.length * 100).toFixed(1) : '0.0';
       const isTemporaryPublicSource = platform.id === 'csdn' && /公开页抓取/.test(latestFile);
       const notes = [];
 
@@ -3092,23 +3165,28 @@
       });
 
       if (stats.growthRows.length) {
-        const rising = stats.growthRows.filter(row => row.viewsGrowth > 0).length;
-        const falling = stats.growthRows.filter(row => row.viewsGrowth < 0).length;
-        notes.push({ title: '关键变化', text: `已有 ${stats.growthRows.length} 条内容出现至少两次指标观测，其中 ${rising} 条浏览量上升、${falling} 条下降；可优先复盘变化最大的内容。` });
+        const rising = operationsInsight.positiveGrowthRows.length;
+        const falling = stats.growthRows.filter(row => (row.viewsGrowth !== null && row.viewsGrowth < 0) || (row.engagementGrowth !== null && row.engagementGrowth < 0)).length;
+        const unchanged = Math.max(0, stats.growthRows.length - rising - falling);
+        notes.push({ title: '关键变化', text: rising
+          ? `已有 ${stats.growthRows.length} 条内容形成至少两次有效观测，其中 ${rising} 条出现正增长、${falling} 条下降、${unchanged} 条暂未变化；优先复盘真实增长和明显下降的内容。`
+          : `已有 ${stats.growthRows.length} 条内容形成至少两次有效观测，但暂未出现正增长；其中 ${falling} 条下降、${unchanged} 条暂未变化。` });
       } else {
         notes.push({ title: '关键变化', text: stats.snapshots.length < 2 ? '当前缺少可比较的周期数据，暂不生成趋势结论；再次上传同一内容的新指标后再判断增长或衰减。' : '已有历史快照，但暂未形成同一内容的多次有效观测，暂不生成趋势结论。' });
       }
 
       notes.push({
         title: '内容判断',
-        text: topContent ? `当前浏览最高的是“${topContent.row[0] || '未命名内容'}”，约 ${formatMetricNumber(topContent.views)}；${stats.hotCount ? `${stats.hotCount} 条达到爆款阈值，占内容样本 ${hotRate}%，建议先拆解爆款的选题、标题和发布时间。` : '暂未识别出达到爆款阈值的内容，先从浏览最高的内容提炼共同特征。'}` : (metricLabels.length ? `已识别${metricLabels.join('、')}字段，但没有可比较的浏览数值，暂不判断内容优劣。` : '当前尚未配置可识别的数值指标，暂不判断内容优劣。')
+        text: topContent ? `当前浏览最高的是“${topContent.row[0] || '未命名内容'}”，约 ${formatMetricNumber(topContent.views)}；${operationsInsight.hotRows.length ? `${operationsInsight.hotRows.length} 条达到爆款阈值，占内容样本 ${hotRate}%，建议先拆解达标内容的选题、标题和发布时间。` : operationsInsight.evaluableHotCount ? `${operationsInsight.evaluableHotCount} 条内容已参与爆款判断但均未达阈值，暂不把高浏览内容直接称为爆款。` : '当前缺少可识别的浏览或互动字段，暂不能判断是否达到爆款阈值。'}` : (metricLabels.length ? `已识别${metricLabels.join('、')}字段，但没有可比较的浏览数值，暂不判断内容优劣。` : '当前尚未配置可识别的数值指标，暂不判断内容优劣。')
       });
 
       const actions = [];
       if (!stats.validViewCount) actions.push('补充并核对浏览 / 播放 / 阅读字段关键词');
       if (!stats.datedContents.length) actions.push('补充有效发布日期');
       if (!stats.growthRows.length) actions.push('下一周期上传同一内容的新指标');
-      if (stats.hotCount) actions.push(`优先复盘 ${stats.hotCount} 条爆款内容`);
+      else if (!operationsInsight.positiveGrowthRows.length) actions.push('继续固定周期观测，当前暂未出现正增长');
+      if (operationsInsight.hotRows.length) actions.push(`优先复盘 ${operationsInsight.hotRows.length} 条达到阈值的内容`);
+      else if (!operationsInsight.evaluableHotCount) actions.push('补齐浏览或互动字段后再判断爆款');
       if (!actions.length) actions.push('继续按固定周期上传同口径官方后台文件');
       notes.push({ title: '下一步动作', text: `${actions.join('；')}。` });
       return notes;
@@ -3323,10 +3401,9 @@
       const contents = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.contents) ? p.contents : [];
       const imports = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.imports) ? p.imports : [];
       const audits = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.audits) ? p.audits : [];
-      const topics = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.topics) ? p.topics : [];
-      const hots = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.hots) ? p.hots : [];
-      const suggestions = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.suggestions) ? p.suggestions : [];
       const activities = (state.dataSource === 'supabase' || state.dataSource === 'uploaded') && Array.isArray(p.activities) ? p.activities : [];
+      const operationsStats = getPlatformRuntimeStats(p);
+      const operationsInsight = getContentOperationsInsight(p, operationsStats);
       if (el('platformText')) el('platformText').textContent = p.name || '未命名平台';
       const platformTitle = `${p.name || '未命名平台'} · 平台工作台`;
       el('platformPageTitle').textContent = platformTitle;
@@ -3349,9 +3426,15 @@
       el('auditLogTable').innerHTML = audits.length ? audits.map(row => `
         <tr><td>${row[0] || ''}</td><td>${row[1] || ''}</td><td>${row[2] || ''}</td><td>${row[5] || '-'}</td><td>${row[3] || ''}</td><td>${row[4] || ''}</td></tr>
       `).join('') : '<tr><td colspan="6"><div class="empty">暂无审计记录</div></td></tr>';
-      el('topicPills').innerHTML = topics.length ? topics.map(t => `<span class="pill green">${t}</span>`).join('') : '<span class="chip">暂无专题</span>';
-      el('hotPills').innerHTML = hots.length ? hots.map(t => `<span class="pill amber">${t}</span>`).join('') : '<span class="chip">暂无爆款标签</span>';
-      el('suggestionList').innerHTML = suggestions.length ? suggestions.map(s => `<li><strong>${s}</strong></li>`).join('') : '<li><strong>暂无建议</strong><p>等数据进来后，再根据真实指标生成动作建议。</p></li>';
+      el('topicPills').innerHTML = operationsInsight.topics.length
+        ? operationsInsight.topics.map(([label, count]) => `<span class="pill green">${escapeHtml(label)} · ${count} 条</span>`).join('')
+        : '<span class="chip">未识别到重复专题</span>';
+      el('hotPills').innerHTML = operationsInsight.hotRows.length
+        ? operationsInsight.hotRows.slice(0, 6).map(row => `<span class="pill amber">${escapeHtml(row[0] || '未命名内容')}</span>`).join('')
+        : operationsInsight.evaluableHotCount
+          ? `<span class="chip">${operationsInsight.evaluableHotCount} 条已评估，均未达阈值</span>`
+          : '<span class="chip">缺少浏览或互动字段，暂不能判断</span>';
+      el('suggestionList').innerHTML = operationsInsight.suggestions.map(item => `<li><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.text)}</p></li>`).join('');
       renderSnapshotGrowth(p);
       renderContentRanking(p);
       renderWorkbenchSummaries(p);
@@ -3474,16 +3557,27 @@
       };
     }
 
-    async function syncFromCloud() {
+    async function syncFromCloud(options = {}) {
+      const silent = Boolean(options.silent);
       if (!supabaseClient) {
         state.cloudStatus = 'unavailable';
         state.statusMessage = '当前浏览器未加载 Supabase 客户端';
         renderRuntimeStatus();
-        showOperationToast('error', state.statusMessage);
+        if (!silent) showOperationToast('error', state.statusMessage);
+        return;
+      }
+      if (!state.authUser || !hasRole('viewer')) {
+        state.cloudStatus = 'ready';
+        state.statusMessage = '请先使用已启用的工作邮箱登录，再加载内部数据';
+        renderRuntimeStatus();
+        if (!silent) {
+          showOperationToast('error', state.statusMessage, 6000);
+          openModal('authModal');
+        }
         return;
       }
       setButtonBusy('syncCloudBtn', true, '同步中…');
-      showOperationToast('warn', '正在从 Supabase 加载真实数据…', 0);
+      if (!silent) showOperationToast('warn', '正在从 Supabase 加载真实数据…', 0);
       try {
         state.cloudStatus = 'loading';
         state.statusMessage = '';
@@ -3587,12 +3681,12 @@
         state.statusMessage = '';
         state.lastCloudSyncAt = new Date().toISOString();
         renderAll();
-        showOperationToast('success', `云端加载完成：${platforms.length} 个平台，${platforms.reduce((sum, p) => sum + (p.contents?.length || 0), 0)} 条内容`);
+        if (!silent) showOperationToast('success', `云端加载完成：${platforms.length} 个平台，${platforms.reduce((sum, p) => sum + (p.contents?.length || 0), 0)} 条内容`);
       } catch (err) {
         state.cloudStatus = 'error';
         state.statusMessage = `云端读取失败：${err.message}`;
         renderAll();
-        showOperationToast('error', state.statusMessage, 7000);
+        if (!silent) showOperationToast('error', state.statusMessage, 7000);
       } finally {
         setButtonBusy('syncCloudBtn', false);
       }
@@ -3874,7 +3968,6 @@
       let totalComments = 0;
       let totalShares = 0;
       let hotCount = 0;
-      const topics = new Set();
       const hots = new Set();
       const suggestions = [];
       const activity = [];
@@ -3911,7 +4004,6 @@
         totalFavorites += favorites || 0;
         totalComments += comments || 0;
         totalShares += shares || 0;
-        if (title) topics.add(title.slice(0, 8));
         if (isHot) hots.add(title);
         contents.push([
           title,
@@ -3990,7 +4082,7 @@
           `总浏览量 ${formatMetricNumber(totalViews)}，平均每条 ${formatMetricNumber(avgViews)}。`,
           hotCount ? `先抓 ${hotCount} 条爆款复盘，别一上来全看。` : '暂时没抓到明显爆款，先看标题和浏览最高的几条。'
         ],
-        topics: Array.from(topics).slice(0, 6),
+        topics: [],
         hots: Array.from(hots).slice(0, 6),
         suggestions,
         activities: activity,
@@ -4109,8 +4201,17 @@
         const ordered = rows.slice().sort((a, b) => new Date(a.observed_at || 0) - new Date(b.observed_at || 0));
         const first = ordered[0];
         const latest = ordered[ordered.length - 1];
-        return { key, first, latest, count: ordered.length, viewsGrowth: (Number(latest.views) || 0) - (Number(first.views) || 0), engagementGrowth: (Number(latest.engagement_total) || 0) - (Number(first.engagement_total) || 0) };
-      }).filter(row => row.count >= 2).sort((a, b) => b.viewsGrowth - a.viewsGrowth).slice(0, 12);
+        const hasViews = first.views !== null && first.views !== undefined && latest.views !== null && latest.views !== undefined;
+        const hasEngagement = first.engagement_total !== null && first.engagement_total !== undefined && latest.engagement_total !== null && latest.engagement_total !== undefined;
+        return {
+          key,
+          first,
+          latest,
+          count: ordered.length,
+          viewsGrowth: hasViews ? Number(latest.views) - Number(first.views) : null,
+          engagementGrowth: hasEngagement ? Number(latest.engagement_total) - Number(first.engagement_total) : null
+        };
+      }).filter(row => row.count >= 2 && (row.viewsGrowth !== null || row.engagementGrowth !== null)).sort((a, b) => (b.viewsGrowth ?? -Infinity) - (a.viewsGrowth ?? -Infinity)).slice(0, 12);
     }
 
     function renderSnapshotGrowth(platform) {
@@ -4160,6 +4261,7 @@
       let totalValidDates = 0;
       let totalViews = 0;
       let duplicateRows = 0;
+      let negativeMetricRows = 0;
       for (const file of supported) {
         try {
           if (platformId === 'csdn' && /公开页抓取/.test(file.name)) {
@@ -4194,25 +4296,37 @@
           if (hasHeader && dateIdx < 0) result.warnings.push(`${file.name} 未识别到发布日期字段，趋势日期可能不完整。`);
           if (hasHeader && viewsIdx < 0) result.warnings.push(`${file.name} 未识别到浏览/播放/曝光字段，浏览趋势和相关 KPI 不会生成。`);
           const dataRows = hasHeader ? cleaned.slice(1) : cleaned;
+          const metricIndexes = Object.entries(mappingIndexes).filter(([key, index]) => !['标题', '日期'].includes(key) && index >= 0);
           const seen = new Set();
           let fileValidDates = 0;
           let fileInvalidDates = 0;
           let fileValidTitles = 0;
-          dataRows.slice(0, 200).forEach(row => {
+          let fileNegativeMetricRows = 0;
+          const negativeMetricExamples = [];
+          dataRows.slice(0, 200).forEach((row, rowIndex) => {
             const cells = row.map(normalizeText);
             const title = cells[titleIdx] || '';
             const publishDate = normalizePublishDate(dateIdx >= 0 ? row[dateIdx] : '') || normalizePublishDate(cells.find((cell, index) => index !== titleIdx && normalizePublishDate(cell)) || '');
             const views = viewsIdx >= 0 ? parseNumber(cells[viewsIdx]) : null;
+            const negativeMetrics = metricIndexes.filter(([, index]) => {
+              const value = parseNumber(cells[index]);
+              return value !== null && value < 0;
+            }).map(([key]) => key);
+            if (negativeMetrics.length) {
+              fileNegativeMetricRows += 1;
+              negativeMetricRows += 1;
+              if (negativeMetricExamples.length < 3) negativeMetricExamples.push(`第 ${rowIndex + 1} 行：${negativeMetrics.join('、')}`);
+            }
             if (title) fileValidTitles += 1;
             if (publishDate) { fileValidDates += 1; totalValidDates += 1; } else if (dateIdx >= 0) fileInvalidDates += 1;
             if (views !== null && views >= 0) totalViews += views;
-            if (views !== null && views < 0) result.warnings.push(`${file.name} 存在负数浏览/播放/曝光量。`);
             const key = contentDedupKey({ title, publish_date: publishDate }, platformId);
             if (seen.has(key) || (key !== `${platformId}::::` && existingKeys.has(key))) duplicateRows += 1;
             seen.add(key);
           });
           totalRows += dataRows.length;
           if (!fileValidTitles) result.blockers.push(`${file.name} 没有可识别的内容标题。`);
+          if (fileNegativeMetricRows) result.blockers.push(`${file.name} 有 ${fileNegativeMetricRows} 行指标为负数（${negativeMetricExamples.join('；')}），指标不能为负，请修正后重新上传。`);
           if (fileInvalidDates) result.warnings.push(`${file.name} 有 ${fileInvalidDates} 行日期无法识别，将不会进入日期趋势。`);
           result.summaries.push({ file, rows, hasHeader, rowCount: dataRows.length, validDates: fileValidDates, validTitles: fileValidTitles, mapping, unmappedHeaders });
         } catch (err) {
@@ -4265,6 +4379,7 @@
         for (const file of files) {
           hint.textContent = `正在读取 ${file.name}（${summaries.length + 1}/${files.length}）...`;
           const fileHash = await hashUploadFile(file);
+          if (!fileHash) throw new Error(`${file.name} 无法计算 SHA-256，已停止整批上传，请换用支持 Web Crypto 的浏览器重试`);
           const knownHashes = Array.isArray(platform.importHashes) ? platform.importHashes : [];
           if (fileHash && knownHashes.includes(fileHash)) {
             skipped.push(`${file.name}（重复文件）`);
@@ -4291,70 +4406,72 @@
           hint.textContent = skipped.length ? `未新增数据：${skipped.join('、')}` : '没有识别到可导入文件。';
           return;
         }
-        const merged = summaries.reduce((acc, summary) => ({
-          contents: acc.contents.concat(summary.contents),
-          trendMetrics: Object.fromEntries(Object.keys(acc.trendMetrics).map(key => [key, (acc.trendMetrics[key] || []).concat(summary.trendMetrics[key] || [])])),
-          trendDates: acc.trendDates.concat(summary.trendDates),
-          snapshotRows: acc.snapshotRows.concat(summary.snapshotRows || []),
-          stats: {
-            rowCount: acc.stats.rowCount + summary.stats.rowCount,
-            totalViews: acc.stats.totalViews + summary.stats.totalViews,
-            totalLikes: acc.stats.totalLikes + summary.stats.totalLikes,
-            totalFavorites: acc.stats.totalFavorites + summary.stats.totalFavorites,
-            totalComments: acc.stats.totalComments + summary.stats.totalComments,
-            totalShares: acc.stats.totalShares + summary.stats.totalShares,
-            hotCount: acc.stats.hotCount + summary.stats.hotCount,
-            engagementTotal: acc.stats.engagementTotal + summary.stats.engagementTotal,
-            engagementRate: 0,
-            profileLabel: summary.stats.profileLabel,
-            detectedHeaders: Array.from(new Set(acc.stats.detectedHeaders.concat(summary.stats.detectedHeaders)))
-          }
-        }), { contents: [], trendMetrics: { views: [], likesRate: [], favoritesRate: [], completionRate: [] }, trendDates: [], snapshotRows: [], stats: { rowCount: 0, totalViews: 0, totalLikes: 0, totalFavorites: 0, totalComments: 0, totalShares: 0, hotCount: 0, engagementTotal: 0, engagementRate: 0, profileLabel: '', detectedHeaders: [] } });
-        merged.stats.engagementRate = merged.stats.totalViews ? merged.stats.engagementTotal / merged.stats.totalViews * 100 : 0;
-        const latest = summaries[summaries.length - 1];
-        const combined = { ...latest, contents: merged.contents, trendMetrics: merged.trendMetrics, trendDates: merged.trendDates, snapshotRows: merged.snapshotRows, stats: merged.stats };
-        mergeSummaryIntoPlatform(platform, combined);
+        if (!supabaseClient) throw new Error('Supabase 客户端未初始化');
+        const batches = summaries.map(summary => {
+          const observedAt = new Date().toISOString();
+          return {
+            import_job: {
+              platform_code: platform.id,
+              imported_at: summary.importRow[0],
+              source_file: summary.file.name,
+              file_size: summary.file.size || null,
+              file_sha: summary.fileHash,
+              row_count: summary.stats.rowCount,
+              detected_headers: summary.stats.detectedHeaders.join(' | ').slice(0, 480),
+              total_views: summary.stats.totalViews,
+              total_engagement: summary.stats.engagementTotal,
+              hot_count: summary.stats.hotCount,
+              engagement_rate: Number(summary.stats.engagementRate.toFixed(2)),
+              updated_by: operator,
+              note: summary.importRow[3],
+              result: '成功',
+              status: '导入成功',
+              quality_summary: { warnings: preflight.warnings, infos: preflight.infos, detected_headers: summary.stats.detectedHeaders }
+            },
+            contents: summary.rawRows.map((row, index) => ({
+              content_key: contentDedupKey(row, platform.id),
+              title: row.title,
+              publish_date: formatPublishDate(row.publish_date),
+              views: row.views,
+              likes: row.likes,
+              favorites: row.favorites,
+              comments: row.comments,
+              shares: row.shares,
+              watch_time: row.watch_time,
+              engagement_text: row.engagement_text,
+              status: row.is_hot ? '爆款' : (row.status || '导入'),
+              is_hot: Boolean(row.is_hot),
+              sort_order: index + 1,
+              source_file: summary.file.name
+            })),
+            snapshots: buildSnapshotRows(summary, platform.id, operator, observedAt),
+            audit: {
+              action_at: summary.auditRow[0],
+              action_type: '上传',
+              action_target: summary.file.name,
+              source_file: summary.file.name,
+              result: '成功',
+              note: summary.auditRow[4]
+            }
+          };
+        });
+        const { data, error } = await supabaseClient.rpc('import_dashboard_batches', {
+          p_platform_code: platform.id,
+          p_batches: batches
+        });
+        if (error) {
+          if (error.code === '23505') throw new Error('本次文件中包含云端已存在的相同 SHA，整批未写入，请移除重复文件后重试');
+          throw error;
+        }
+        const insertedContents = Number(data?.inserted_contents || 0);
+        const updatedContents = Number(data?.updated_contents || 0);
+        const insertedSnapshots = Number(data?.snapshots || 0);
         state.platform = platform.id;
         state.operator = operator;
-        state.dataSource = 'uploaded';
-        state.cloudStatus = supabaseClient ? 'ready' : 'unavailable';
-        state.statusMessage = `已解析 ${summaries.length} 个文件，历史数据已保留`;
-        renderAll();
-
-        if (supabaseClient) {
-          const { data: oldImports, error: oldImportError } = await supabaseClient.from(TABLES.importJobs).select('file_sha').eq('platform_code', platform.id);
-          if (oldImportError) throw oldImportError;
-          const { data: oldContents, error: oldContentError } = await supabaseClient.from(TABLES.contents).select('title,publish_date').eq('platform_code', platform.id);
-          if (oldContentError) throw oldContentError;
-          const cloudHashes = new Set((oldImports || []).map(row => row.file_sha).filter(Boolean));
-          const cloudContentKeys = new Set((oldContents || []).map(row => contentDedupKey(row, platform.id)));
-          for (const summary of summaries) {
-            if (summary.fileHash && cloudHashes.has(summary.fileHash)) continue;
-            const snapshotRows = buildSnapshotRows(summary, platform.id, operator, new Date().toISOString());
-            const contentRows = summary.rawRows.filter(row => {
-              const key = contentDedupKey(row, platform.id);
-              if (cloudContentKeys.has(key)) return false;
-              cloudContentKeys.add(key);
-              return true;
-            }).map((row, index) => ({ platform_code: platform.id, title: row.title, publish_date: formatPublishDate(row.publish_date), views: row.views, likes: row.likes, favorites: row.favorites, comments: row.comments, shares: row.shares, watch_time: row.watch_time, engagement_text: row.engagement_text, status: row.status || (row.is_hot ? '爆款' : '导入'), is_hot: row.is_hot, sort_order: index + 1, source_file: summary.file.name, updated_at: new Date().toISOString(), updated_by: operator, actor_user_id: currentActor().id }));
-            const importRow = { platform_code: platform.id, imported_at: summary.importRow[0], source_file: summary.file.name, file_size: summary.file.size || null, file_sha: summary.fileHash, row_count: summary.stats.rowCount, detected_headers: summary.stats.detectedHeaders.join(' | ').slice(0, 480), total_views: summary.stats.totalViews, total_engagement: summary.stats.engagementTotal, hot_count: summary.stats.hotCount, engagement_rate: Number(summary.stats.engagementRate.toFixed(2)), updated_by: operator, actor_user_id: currentActor().id, note: summary.importRow[3], result: '成功', status: skipped.length ? '部分成功' : '导入成功', quality_summary: { warnings: preflight.warnings, infos: preflight.infos, detected_headers: summary.stats.detectedHeaders }, created_at: new Date().toISOString() };
-            const auditRow = { platform_code: platform.id, action_at: summary.auditRow[0], action_type: '上传', action_target: summary.file.name, source_file: summary.file.name, result: '成功', updated_by: operator, actor_user_id: currentActor().id, note: summary.auditRow[4], created_at: new Date().toISOString() };
-            const writes = [supabaseClient.from(TABLES.importJobs).insert(importRow), supabaseClient.from(TABLES.auditLogs).insert(auditRow)];
-            if (contentRows.length) writes.unshift(supabaseClient.from(TABLES.contents).insert(contentRows));
-            if (snapshotRows.length) writes.unshift(supabaseClient.from(TABLES.contentSnapshots).upsert(snapshotRows, { onConflict: 'platform_code,source_file,content_key', ignoreDuplicates: true }));
-            const results = await Promise.all(writes);
-            const failed = results.find(result => result.error);
-            if (failed) throw failed.error;
-            cloudHashes.add(summary.fileHash);
-          }
-          state.dataSource = 'supabase';
-          state.cloudStatus = 'connected';
-          state.statusMessage = `已将 ${summaries.length} 个文件写入 Supabase`;
-          renderAll();
-        }
-        hint.textContent = `已新增 ${summaries.length} 个文件，跳过 ${skipped.length} 个重复文件；历史数据已保留。`;
+        await syncFromCloud({ silent: true });
+        hint.textContent = `上传完成：新增 ${insertedContents} 条内容，更新 ${updatedContents} 条当前指标，追加 ${insertedSnapshots} 条历史快照；跳过 ${skipped.length} 个重复文件。`;
         closeModal('uploadModal');
-        showOperationToast('success', `上传完成：新增 ${summaries.length} 个文件，跳过 ${skipped.length} 个重复文件`);
+        showOperationToast('success', hint.textContent, 7000);
       } catch (err) {
         console.error(err);
         state.cloudStatus = 'error';
@@ -4394,16 +4511,17 @@
       showOperationToast('warn', '正在保存平台配置…', 0);
       try {
         const platformRows = platforms.map(toDbPlatformRow);
-        const { error } = await supabaseClient.from(TABLES.platforms).upsert(platformRows, { onConflict: 'code' });
+        const { data, error } = await supabaseClient.rpc('save_dashboard_platform_configs', {
+          p_platforms: platformRows,
+          p_change_note: '批量保存平台配置'
+        });
         if (error) throw error;
-        const versionRows = platformRows.map(row => ({ platform_code: row.code, config_snapshot: row, change_note: '批量保存平台配置', actor_user_id: currentActor().id, updated_by: currentActor().name }));
-        const { error: versionError } = await supabaseClient.from('platform_config_versions').insert(versionRows);
-        if (versionError) throw versionError;
+        const savedCount = Number(data?.saved || platformRows.length);
         state.dataSource = 'supabase';
         state.cloudStatus = 'connected';
         state.statusMessage = '平台配置已保存；历史内容、导入批次和审计日志均已保留';
         renderAll();
-        showOperationToast('success', `已保存 ${platformRows.length} 个平台配置，历史数据保持不变`);
+        showOperationToast('success', `已原子保存 ${savedCount} 个平台配置，历史数据保持不变`);
       } catch (err) {
         state.cloudStatus = 'error';
         state.statusMessage = `平台配置保存失败：${err.message}`;
