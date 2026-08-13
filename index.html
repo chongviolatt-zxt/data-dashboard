@@ -613,6 +613,33 @@
     .data-quality-item span { display: block; color: var(--muted-2); font-size: 11px; }
     .data-quality-item strong { display: block; margin-top: 5px; color: var(--text); font-size: 14px; }
     .data-quality-item p { margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+    .technical-details {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .technical-details > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 14px;
+      cursor: pointer;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      list-style: none;
+      background: #fcfcfb;
+    }
+    .technical-details > summary::-webkit-details-marker { display: none; }
+    .technical-details > summary::after { content: '展开'; color: var(--muted-2); font-size: 11px; font-weight: 600; }
+    .technical-details[open] > summary::after { content: '收起'; }
+    .technical-details-body { padding: 0 12px 12px; border-top: 1px solid var(--line-soft); }
+    .technical-details-body .data-quality { margin-top: 12px; }
+    .overview-alert { margin-top: 12px; }
+    .overview-alert .data-quality-head { border-bottom: 0; }
     .operation-toast {
       position: fixed;
       right: 22px;
@@ -1338,43 +1365,48 @@
         <div id="tab-overview" class="tab-panel active" style="margin-top:16px;">
           <div class="panel" style="margin-bottom:14px;">
             <h3>平台概览</h3>
-            <p class="lead" style="font-size:13px;">快速查看当前平台的数据覆盖、最新内容和最近动作；核心指标与近 30 天趋势在上方统一展示。</p>
+            <p class="lead" style="font-size:13px;">先看内容规模、浏览、爆款和最近更新；数据异常与字段细节按需展开。</p>
             <div class="grid-4" style="margin-top:14px;">
               <div class="kpi"><div class="label">当前内容</div><div class="value" id="overviewContentCount">0</div><div class="hint">去重后的最新记录</div></div>
-              <div class="kpi"><div class="label">有效日期</div><div class="value" id="overviewDateCount">0</div><div class="hint">可进入趋势的内容</div></div>
-              <div class="kpi"><div class="label">历史快照</div><div class="value" id="overviewSnapshotCount">0</div><div class="hint">指标观测次数</div></div>
+              <div class="kpi"><div class="label">总浏览量</div><div class="value" id="overviewTotalViews">0</div><div class="hint">当前平台真实数据</div></div>
+              <div class="kpi"><div class="label">爆款内容</div><div class="value" id="overviewHotCount">0</div><div class="hint">按当前平台阈值</div></div>
               <div class="kpi"><div class="label">最近导入</div><div class="value" id="overviewLatestImport">暂无</div><div class="hint">当前平台最新批次</div></div>
             </div>
             <p class="chart-caption" id="overviewBasis" style="margin:12px 0 0;">暂无当前平台数据。</p>
-            <div class="data-quality" id="dataQualityPanel">
+            <div class="data-quality overview-alert" id="dataQualityPanel">
               <div class="data-quality-head">
                 <div>
-                  <strong class="data-quality-title">数据质量</strong>
-                  <p class="data-quality-copy" id="dataQualitySummary">等待真实数据后评估字段覆盖和分析可用性。</p>
+                  <strong class="data-quality-title">数据检查</strong>
+                  <p class="data-quality-copy" id="dataQualitySummary">等待真实数据后评估分析可用性。</p>
                 </div>
                 <span class="data-quality-state block" id="dataQualityState">等待数据</span>
               </div>
-              <div class="data-quality-grid" id="dataQualityGrid"></div>
+              <div class="data-quality-grid" id="dataQualityGrid" hidden></div>
             </div>
-            <div class="data-quality" id="fieldProfilePanel">
-              <div class="data-quality-head">
-                <div>
-                  <strong class="data-quality-title">字段识别详情</strong>
-                  <p class="data-quality-copy" id="fieldProfileSummary">等待上传或云端数据后展示实际识别口径。</p>
+            <details class="technical-details" id="technicalDetailsPanel">
+              <summary>数据与字段详情</summary>
+              <div class="technical-details-body">
+                <div class="data-quality" id="fieldProfilePanel">
+                  <div class="data-quality-head">
+                    <div>
+                      <strong class="data-quality-title">字段识别详情</strong>
+                      <p class="data-quality-copy" id="fieldProfileSummary">等待上传或云端数据后展示实际识别口径。</p>
+                    </div>
+                    <span class="chip" id="fieldProfileSource">未识别</span>
+                  </div>
+                  <div class="data-quality-grid" id="fieldProfileGrid"></div>
                 </div>
-                <span class="chip" id="fieldProfileSource">未识别</span>
-              </div>
-              <div class="data-quality-grid" id="fieldProfileGrid"></div>
-            </div>
-            <div class="data-quality" id="dataSourcePanel">
-              <div class="data-quality-head">
-                <div>
-                  <strong class="data-quality-title">来源与同步</strong>
-                  <p class="data-quality-copy" id="dataSourceSummary">当前平台还没有真实数据来源记录。</p>
+                <div class="data-quality" id="dataSourcePanel">
+                  <div class="data-quality-head">
+                    <div>
+                      <strong class="data-quality-title">来源与同步</strong>
+                      <p class="data-quality-copy" id="dataSourceSummary">当前平台还没有真实数据来源记录。</p>
+                    </div>
+                    <span class="chip" id="platformSourceTag">待同步</span>
+                  </div>
                 </div>
-                <span class="chip" id="platformSourceTag">待同步</span>
               </div>
-            </div>
+            </details>
           </div>
           <div class="grid-2 overview-content-grid">
             <div class="shell">
@@ -2911,14 +2943,11 @@
       stateEl.textContent = stateText;
       stateEl.className = `data-quality-state ${stateClass}`.trim();
       el('dataQualitySummary').textContent = summary;
-      const items = [
-        { label: '内容记录', value: `${total} 条`, hint: total ? '当前平台去重内容' : '等待上传' },
-        { label: '标题完整度', value: formatCoverage(stats.titledContentCount, total), hint: `${stats.titledContentCount} / ${total || 0} 条有标题` },
-        { label: '日期覆盖率', value: formatCoverage(stats.datedContents.length, total), hint: `${stats.datedContents.length} / ${total || 0} 条可做周期分析` },
-        { label: '浏览字段覆盖率', value: formatCoverage(stats.validViewCount, total), hint: `${stats.validViewCount} / ${total || 0} 条可做流量分析` },
-        { label: '互动与历史', value: stats.growthRows.length ? `${stats.growthRows.length} 条可比较` : stats.snapshots.length ? `${stats.snapshots.length} 条快照` : '暂无快照', hint: stats.validEngagementCount ? `${stats.validEngagementCount} 条有互动摘要` : '未识别互动字段' }
-      ];
-      el('dataQualityGrid').innerHTML = items.map(item => `<div class="data-quality-item"><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value)}</strong><p>${escapeHtml(item.hint)}</p></div>`).join('');
+      const detailGrid = el('dataQualityGrid');
+      if (detailGrid) {
+        detailGrid.hidden = true;
+        detailGrid.innerHTML = '';
+      }
     }
 
     function getImportMeta(row) {
@@ -3047,10 +3076,13 @@
       const stats = getPlatformRuntimeStats(platform);
       const latestImportText = stats.latestImport ? formatRuntimeTime(stats.latestImport[0]).slice(0, 10) : '暂无';
       el('overviewContentCount').textContent = String(stats.contents.length);
-      el('overviewDateCount').textContent = String(stats.datedContents.length);
-      el('overviewSnapshotCount').textContent = String(stats.snapshots.length);
+      el('overviewTotalViews').textContent = stats.validViewCount ? formatMetricNumber(stats.totalViews) : '-';
+      el('overviewHotCount').textContent = stats.validViewCount || stats.validEngagementCount ? String(stats.hotCount) : '-';
       el('overviewLatestImport').textContent = latestImportText;
-      el('overviewBasis').textContent = stats.contents.length ? `当前平台共 ${stats.contents.length} 条去重内容，其中 ${stats.datedContents.length} 条有有效发布日期；${stats.validViewCount ? `已识别 ${stats.validViewCount} 条浏览字段，合计 ${formatMetricNumber(stats.totalViews)}。` : '当前文件未识别到浏览字段。'} 最近导入文件：${stats.latestImport ? stats.latestImport[1] : '暂无记录'}。` : '暂无当前平台数据，上传官方后台文件后才会生成概览。';
+      const sourceWarning = platform.id === 'csdn' && /公开页抓取/.test(stats.latestImport?.[1] || '') ? ' 当前来源为公开页抓取数据，仅供临时分析。' : '';
+      el('overviewBasis').textContent = stats.contents.length
+        ? `当前 ${stats.contents.length} 条内容${stats.validViewCount ? `，浏览合计 ${formatMetricNumber(stats.totalViews)}` : ''}${stats.validEngagementCount ? `，${stats.validEngagementCount} 条有互动记录` : ''}；${stats.datedContents.length === stats.contents.length ? '日期完整' : `${stats.datedContents.length} 条日期可用`}。${sourceWarning}`
+        : '暂无当前平台数据，上传官方后台文件后才会生成概览。';
       renderDataQuality(platform, stats);
       renderFieldProfileDetails(platform, stats);
       renderPlatformSource(platform, stats);
@@ -3233,7 +3265,10 @@
       const note = String(el('reviewNoteInput')?.value || '').trim();
       setButtonBusy('saveReviewNoteBtn', true, '保存中…');
       try {
-        const { error } = await supabaseClient.from(TABLES.platforms).update({ review_note: note || null, updated_by: currentActor().name, actor_user_id: currentActor().id, updated_at: new Date().toISOString() }).eq('code', platform.id);
+        const { error } = await supabaseClient.rpc('save_dashboard_platform_configs', {
+          p_platforms: [{ ...toDbPlatformRow(platform), review_note: note || null }],
+          p_change_note: '保存人工复盘备注'
+        });
         if (error) throw error;
         platform.reviewNote = note;
         el('reviewNoteStatus').textContent = `已由 ${currentActor().name} 保存 · ${new Date().toLocaleString('zh-CN', { hour12: false })}`;
